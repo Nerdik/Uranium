@@ -1,14 +1,14 @@
 import sys
 import pandas as pd
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QPixmap, QColor
+from PyQt6.QtCore import QSize, Qt, QBasicTimer
 from PyQt6.QtWidgets import (
     QApplication, QVBoxLayout, QWidget,
     QMainWindow, QLabel, QGridLayout, QPushButton,
     QFileDialog, QTextEdit, QListWidget, QListWidgetItem,
     QTableView, QTableWidgetItem, QTableWidget,
     QStackedLayout, QHBoxLayout, QVBoxLayout,
-    QLineEdit, QSpacerItem, QSizePolicy
+    QLineEdit, QSpacerItem, QSizePolicy, QProgressBar
 )
 
 from engine import (
@@ -25,6 +25,48 @@ from engine import (
 #-----------------------------------------------------------------------------------------------------------------------------
 # Основной код интерфейса
 #-----------------------------------------------------------------------------------------------------------------------------
+
+# class ProgressBarWindow(QWidget):
+#     '''
+#     Класс окна с прогрессбаром
+#     '''
+#     def __init__(self):
+#         super().__init__()
+
+#         w.show()
+
+#         # Объявляем макеты
+#         self.pbar = QProgressBar(self)
+#         self.pbar.setGeometry(30, 40, 200, 25)
+
+#         self.btn = QPushButton('Start', self)
+#         self.btn.move(40, 80)
+#         self.btn.clicked.connect(self.doAction)
+
+#         self.timer = QBasicTimer()
+#         self.step = 0
+
+#         self.setGeometry(300, 300, 280, 170)
+#         self.setWindowTitle('QProgressBar')
+        
+
+#      def timerEvent(self, e):
+#         if self.step >= 100:
+
+#             self.timer.stop()
+#             self.btn.setText('Finished')
+#             return
+
+#         self.step = self.step + 1
+#         self.pbar.setValue(self.step)
+
+#     def doAction(self):
+#         if self.timer.isActive():
+#             self.timer.stop()
+#             self.btn.setText('Start')
+#         else:
+#             self.timer.start(100, self)
+#             self.btn.setText('Stop')
 
 
 class HomeLayout(QWidget):
@@ -123,7 +165,6 @@ class UploadLayout(QWidget):
         # Добавляем виджеты в сетку
         self.page_layout.setSpacing(20)
         self.page_layout.addWidget(self.label1, 0, 0)
-        # self.page_layout.setSpacing(20)
         
         self.page_layout.addLayout(self.grid_layout, 1, 0)
         self.grid_layout.addWidget(self.color_widget, 0, 0, alignment=Qt.AlignmentFlag.AlignTop)
@@ -131,7 +172,7 @@ class UploadLayout(QWidget):
         self.grid_layout.addWidget(self.file_list_widget, 1, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout.addWidget(self.button1, 2, 0, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout.addWidget(self.button2, 2, 1, alignment=Qt.AlignmentFlag.AlignTop)
-        # self.page_layout.setSpacing(100)
+        
         self.page_layout.addWidget(self.button3, 2, 0)
 
         self.page_layout.addItem(spacer, 2, 0)      
@@ -147,12 +188,13 @@ class UploadLayout(QWidget):
         self.button1.clicked.connect(self.add_file)
         self.button2.clicked.connect(self.remove_file)
         self.button3.clicked.connect(self.load_file)
+
         # Создаем вспомогательный виджет для второго фона в QVBoxLayout
         self.page_layout.addWidget(self.color_widget, 1, 0)
 
-
         # Список загружаемых файлов
         self.files_list = []
+
 
     def add_file(self):
         # Открываем диалоговое окно для выбора файла
@@ -163,7 +205,6 @@ class UploadLayout(QWidget):
                     self.files_list.append(name)
                     self.file_list_widget.addItem(name)                       
 
-    
 
     def remove_file(self):
         # Удаляем выбранный файл из списка
@@ -275,13 +316,15 @@ class SettingsLayout(QWidget):
         self.button1.pressed.connect(self.LLM_input)
 
         # Задаем пустое начальное значение ввода для LLM
-        self.LLM_input_text = ""
+        self.LLM_input_text = ''
+
 
     def update_data(self, row, col):
         # Обновление DataFrame при изменении данных в таблице
         new_value = self.check_table.item(row, col).text()
         self.columns_df.iloc[row, col] = new_value
         update_table_columns_engine(self.columns_df, row, col, new_value)      # TODO <- Функция загрузки из engine.py
+
 
     def LLM_input(self):
         self.LLM_input_text = self.text_input.text()
@@ -309,11 +352,17 @@ class ControlLayout(QWidget):
         self.check_table.setRowCount(len(self.columns_settings_df))
         self.check_table.setColumnCount(len(self.columns_settings_df.columns))
         self.check_table.setHorizontalHeaderLabels(self.columns_settings_df.columns)
+        self.button1 = QPushButton("Оставить только выбранные столбцы")
+        self.button2 = QPushButton("Вернуть начальную подборку")
+        self.button3 = QPushButton("Запуск формирования таблицы с LLM")
         
         spacer = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         # Устанавливаем фиксированные размеры для виджетов   
-        self.check_table.setMinimumSize(200, 500)
+        self.check_table.setMinimumSize(200, 400)
+        self.button1.setMinimumSize(200, 50)
+        self.button2.setMinimumSize(200, 50)
+        self.button3.setMinimumSize(200, 50)
 
         # Устанавливаем цвет фона виджета
         self.color_widget = QWidget()
@@ -321,39 +370,106 @@ class ControlLayout(QWidget):
 
         # Добавляем виджеты в сетку
         self.page_layout.setSpacing(20)
-        self.page_layout.addWidget(self.label1, 0, 0, 1, 2)
-        self.page_layout.setSpacing(20)
+        self.page_layout.addWidget(self.label1, 0, 0)
 
-        self.page_layout.addLayout(self.grid_layout, 1, 0, alignment=Qt.AlignmentFlag.AlignTop)
+        self.page_layout.addLayout(self.grid_layout, 1, 0)
         self.grid_layout.addWidget(self.color_widget, 0, 0, alignment=Qt.AlignmentFlag.AlignTop)
-        self.grid_layout.addWidget(self.label2, 1, 0, 1, 2)
-        self.grid_layout.addWidget(self.check_table, 2, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout.addWidget(self.label2, 0, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout.addWidget(self.check_table, 1, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout.addWidget(self.button1, 2, 0, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout.addWidget(self.button2, 2, 1, alignment=Qt.AlignmentFlag.AlignTop)
+
+        self.page_layout.addWidget(self.button3, 2, 0)
         
         self.page_layout.addItem(spacer, 2, 0)
 
         # Устанавливаем stretch-факторы
         self.grid_layout.setRowStretch(0, 0)
         self.grid_layout.setRowStretch(1, 0)
-        self.grid_layout.setRowStretch(2, 1)
-        self.grid_layout.setColumnStretch(0, 0)
+        self.grid_layout.setRowStretch(2, 0)
+        self.grid_layout.setRowStretch(3, 1)
+        self.grid_layout.setColumnStretch(0, 1)
         self.grid_layout.setColumnStretch(1, 1)
 
+        # Создание первичной backup версии таблицы
+        self.backup_table = self.columns_settings_df
+        
         # Заполнение таблицы данными из DataFrame 
-        for row in range(len(self.columns_settings_df)):
-            for col in range(len(self.columns_settings_df.columns)):
-                self.check_table.setItem(row, col, QTableWidgetItem(str(self.columns_settings_df.iloc[row, col])))
+        self.update_table(self.columns_settings_df)
+
+        # Подключаем сигнал нажатия на кнопки запуска LLM
+        self.button1.pressed.connect(lambda: self.update_columns(self.columns_settings_df))
+        self.button2.pressed.connect(lambda: self.update_table(self.backup_table))
+        self.button3.pressed.connect(lambda: self.start_LLM(self.updated_df))         
 
         # Подключение сигнала изменения ячейки к обработчику
-        self.check_table.cellChanged.connect(self.update_data)
-
+        self.check_table.cellClicked.connect(self.update_data)
+        
         # Создаем вспомогательный виджет для второго фона в QVBoxLayout
         self.page_layout.addWidget(self.color_widget, 1, 0)
+    
+    
+    def update_table(self, dataframe):
+        # Заполнение таблицы данными из DataFrame
+        self.check_table.clearContents()
+        self.check_table.setRowCount(len(dataframe))
+        self.check_table.setColumnCount(len(dataframe.columns))
+        self.check_table.setHorizontalHeaderLabels(dataframe.columns)
 
+        for row in range(len(dataframe)):
+            for col in range(len(dataframe.columns)):
+                self.update_item(row, col, dataframe)
+                self.check_table.item(row, col).setBackground(QColor(255, 255, 255))
+
+
+    def update_columns(self, dataframe):
+        # Функция обновления таблицы с учетом отмеченных ячеек
+        updated_dict = {col: [] for col in dataframe.columns}
+        for col in range(len(dataframe.columns)):
+            col_data = {}
+            for row in range(len(dataframe)):
+                item = self.check_table.item(row, col)
+                if col == 0 or col == (len(dataframe.columns) - 1):
+                    if item is not None and item.text().strip() != '':
+                        updated_dict[dataframe.columns[col]].append(item.text().strip())          
+                elif self.check_table.item(row, col).background().color().red() == 0:
+                    updated_dict[dataframe.columns[col]].append(item.text().strip()) 
+                    
+        self.updated_df = pd.DataFrame(updated_dict)
+        self.update_table(self.updated_df)
+
+
+    def start_LLM(self, dataframe):
+        update_table_columns_engine(dataframe)          # TODO <- Функция загрузки из engine.py
+    
+    
+    def update_item(self, row, col, dataframe):
+        # Функция обновления отображения данных ячейки в таблице
+        self.check_table.setItem(row, col, QTableWidgetItem(str(dataframe.iloc[row, col])))
+    
+    
     def update_data(self, row, col):
-        # Обновление DataFrame при изменении данных в таблице
-        new_value = self.check_table.item(row, col).text()
-        self.columns_settings_df.iloc[row, col] = new_value
-        update_table_columns_engine(self.columns_settings_df, row, col, new_value)      # TODO <- Функция загрузки из engine.py
+        # Функция обновления данных ячейки 
+        if col != 0 and col != (len(self.columns_settings_df.columns) - 1):
+            cell = self.check_table.item(row, col).background().color().red()
+            match cell:
+                case 255:
+                    self.check_table.item(row, col).setBackground(QColor(0, 255, 0))
+                case 0:
+                    self.check_table.item(row, col).setBackground(QColor(255, 255, 255))
+        elif col == (len(self.columns_settings_df.columns) - 1):
+            cell = self.check_table.item(row, col).text()
+            match cell:
+                case 'да':
+                    new_value = 'нет'
+                    self.columns_settings_df.iloc[row, col] = new_value
+                    self.update_item(row, col, self.columns_settings_df)
+                case 'нет':
+                    new_value = 'да'
+                    self.columns_settings_df.iloc[row, col] = new_value
+                    self.update_item(row, col, self.columns_settings_df)
+                case '':
+                    pass
 
 
 class ResultLayout(QWidget):
@@ -421,8 +537,9 @@ class ResultLayout(QWidget):
         # Подключаем сигнал нажатия на кнопки
         self.button1.clicked.connect(self.create_file)
 
-    # Функция запуска создания файла
+    
     def create_file(self):
+        # Функция запуска создания файла
         create_file_engine(self.table_preview_df)               # TODO <- Функция загрузки из engine.py
 
 
@@ -482,7 +599,6 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(self.stack_layout, 0, 1, alignment=Qt.AlignmentFlag.AlignTop)
         main_layout.addWidget(cell_widget_1, 0, 0)
         main_layout.addWidget(cell_widget_2, 0, 1)
-
 
         # Добавляем виджеты в сетку
         menu_layout.addWidget(self.image_label, alignment=Qt.AlignmentFlag.AlignCenter) 

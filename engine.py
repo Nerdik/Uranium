@@ -25,7 +25,7 @@ def LLM_input_engine(LLM_input_text):
 def table_columns_engine():
     # DataFrame с данными столбцов итоговой таблицы - тут приведен для демонстрации работы
     columns = {
-        'Наименование столбца итоговой таблицы': ['John', 'Jane', 'Mike']
+        'Наименование столбца итоговой таблицы': ['John', 'Jane', 'Mike', '']
         }
     columns_df = pd.DataFrame(columns)
     return columns_df
@@ -40,18 +40,22 @@ def update_table_columns_engine(columns_df, row, col, new_value):
 '''
 < Окно Контроль вывода > Функция пполучающая информацию из таблицы
 '''
+
 def control_table_columns_engine():
     # DataFrame с данными таблицы сгруппированных столбцов - тут приведен для демонстрации работы
+   
     columns_settings = {
-            'Наименование столбца итоговой таблицы': ['John', 'Jane', 'Mike'],
-            'Age': [25, 30, 35],
-            'City': ['New York', 'London', 'Paris']
+            'Группа': ['Столбец 1', '', '', 'Столбец 2', '', ''],
+            'Excel1': [25, 30, 35, 25, 30, 35],
+            'Excel2': [25, 30, 35, 25, 30, 35],
+            'Excel3': [25, 30, 35, 25, 30, 35],
+            'Объединение': ['да', '', '', 'да', '', '']
             }
     columns_settings_df = pd.DataFrame(columns_settings)
     return columns_settings_df
 
-def update_table_columns_engine(columns_df, row, col, new_value):
-    columns_df.iloc[row, col] = new_value
+def update_table_columns_engine(columns_df):
+    # columns_df.iloc[row, col] = new_value
     print(columns_df)
 
 
