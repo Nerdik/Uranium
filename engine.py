@@ -54,7 +54,7 @@ def control_table_columns_engine():
     columns_settings_df = pd.DataFrame(columns_settings)
     return columns_settings_df
 
-def update_table_columns_engine(columns_df):
+def start_LLM_engine(columns_df):
     # columns_df.iloc[row, col] = new_value
     print(columns_df)
 

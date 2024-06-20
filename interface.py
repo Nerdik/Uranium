@@ -1,7 +1,10 @@
 import sys
 import pandas as pd
 from PyQt6.QtGui import QPixmap, QColor
-from PyQt6.QtCore import QSize, Qt, QBasicTimer
+from PyQt6.QtCore import (
+    QSize, Qt, QBasicTimer, QCoreApplication,
+    QThread, pyqtSignal
+)
 from PyQt6.QtWidgets import (
     QApplication, QVBoxLayout, QWidget,
     QMainWindow, QLabel, QGridLayout, QPushButton,
@@ -14,6 +17,7 @@ from PyQt6.QtWidgets import (
 from engine import (
     load_files_engine,
     LLM_input_engine,
+    start_LLM_engine,
     table_columns_engine,
     update_table_columns_engine,
     control_table_columns_engine,
@@ -26,47 +30,46 @@ from engine import (
 # Основной код интерфейса
 #-----------------------------------------------------------------------------------------------------------------------------
 
-# class ProgressBarWindow(QWidget):
-#     '''
-#     Класс окна с прогрессбаром
-#     '''
-#     def __init__(self):
-#         super().__init__()
+class ProgressBarWidget(QWidget):
+    '''
+    Класс прогресс-бара 
+    '''
+    def __init__(self):
+        super().__init__()
+        self.initUI()
 
-#         w.show()
+    def initUI(self):
+        self.layout = QVBoxLayout(self)
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setMinimum(0)
+        self.progress_bar.setMaximum(100)
+        self.layout.addWidget(self.progress_bar)
 
-#         # Объявляем макеты
-#         self.pbar = QProgressBar(self)
-#         self.pbar.setGeometry(30, 40, 200, 25)
+    def set_progress(self, value):
+        self.progress_bar.setValue(value)
 
-#         self.btn = QPushButton('Start', self)
-#         self.btn.move(40, 80)
-#         self.btn.clicked.connect(self.doAction)
 
-#         self.timer = QBasicTimer()
-#         self.step = 0
-
-#         self.setGeometry(300, 300, 280, 170)
-#         self.setWindowTitle('QProgressBar')
-        
-
-#      def timerEvent(self, e):
-#         if self.step >= 100:
-
-#             self.timer.stop()
-#             self.btn.setText('Finished')
-#             return
-
-#         self.step = self.step + 1
-#         self.pbar.setValue(self.step)
-
-#     def doAction(self):
-#         if self.timer.isActive():
-#             self.timer.stop()
-#             self.btn.setText('Start')
-#         else:
-#             self.timer.start(100, self)
-#             self.btn.setText('Stop')
+class WorkerThread(QThread):
+    '''
+    Класс рабочего потока для прогресс-бара
+    '''
+    progress_changed = pyqtSignal(int)
+    
+    def __init__(self, data, parent=None):
+        super().__init__(parent)
+        self.data = data
+    
+    def run(self):
+        total_steps = len(self.data)
+        for i, item in enumerate(self.data):
+            # Ваш длительный процесс здесь
+            self.do_work(item)
+            progress = int((i + 1) / total_steps * 100)
+            self.progress_changed.emit(progress)
+    
+    def do_work(self, item):
+        # Имитация работы (заменить на реальную функцию)
+        QThread.sleep(1)  # Удалить или заменить на реальный процесс
 
 
 class HomeLayout(QWidget):
@@ -237,6 +240,11 @@ class SettingsLayout(QWidget):
         self.grid_layout_2.setContentsMargins(40, 40, 40, 40)
 
         # Создаем виджеты
+        self.label3 = QLabel("Запрос с применением LLM")
+        self.label4 = QLabel("Введите текстовый запрос")
+        self.text_input = QTextEdit()
+        self.button1 = QPushButton("Запуск LLM")   
+               
         self.label1 = QLabel("Настройка запроса")
         self.label2 = QLabel("Таблица контроля выбранных столбцов")
         self.check_table = QTableWidget()
@@ -244,11 +252,6 @@ class SettingsLayout(QWidget):
         self.check_table.setRowCount(len(self.columns_df))
         self.check_table.setColumnCount(len(self.columns_df.columns))
         self.check_table.setHorizontalHeaderLabels(self.columns_df.columns)
-
-        self.label3 = QLabel("Запрос с применением LLM")
-        self.label4 = QLabel("Введите текст")
-        self.text_input = QLineEdit()
-        self.button1 = QPushButton("Запуск LLM")
 
         spacer = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
@@ -265,40 +268,40 @@ class SettingsLayout(QWidget):
 
         # Добавляем виджеты в сетку
         self.page_layout.setSpacing(20)
-        self.page_layout.addWidget(self.label1, 0, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
-        self.page_layout.setSpacing(20)
+        self.page_layout.addWidget(self.label3, 0, 0, 1, 2)
 
-        self.page_layout.addLayout(self.grid_layout_1, 1, 0, alignment=Qt.AlignmentFlag.AlignTop)
-        self.grid_layout_1.addWidget(self.color_widget_1, 0, 0, alignment=Qt.AlignmentFlag.AlignTop)
-        self.grid_layout_1.addWidget(self.label2, 1, 0, alignment=Qt.AlignmentFlag.AlignTop)
-        self.grid_layout_1.addWidget(self.check_table, 2, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
-
-        self.page_layout.addWidget(self.label3, 2, 0, 1, 2)
-
-        self.page_layout.addLayout(self.grid_layout_2, 3, 0, alignment=Qt.AlignmentFlag.AlignTop)
+        self.page_layout.addLayout(self.grid_layout_2, 1, 0, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout_2.addWidget(self.color_widget_2, 0, 0, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout_2.addWidget(self.label4, 1, 0, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout_2.addWidget(self.text_input, 2, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
-        self.grid_layout_2.addWidget(self.button1, 3, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout_2.addWidget(self.button1, 3, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)       
+    
+        self.page_layout.addWidget(self.label1, 2, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
+
+        self.page_layout.addLayout(self.grid_layout_1, 3, 0, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout_1.addWidget(self.color_widget_1, 0, 0, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout_1.addWidget(self.label2, 1, 0, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout_1.addWidget(self.check_table, 2, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
 
         self.page_layout.addItem(spacer, 4, 0, 1, 2)
 
         # Устанавливаем stretch-факторы
         self.page_layout.setRowStretch(0, 0)
-        self.grid_layout_1.setRowStretch(0, 0)
-        self.grid_layout_1.setRowStretch(1, 0)
-        self.grid_layout_1.setRowStretch(2, 0)
-        self.page_layout.setRowStretch(1, 0)
         self.grid_layout_2.setRowStretch(0, 0)
         self.grid_layout_2.setRowStretch(1, 0)
         self.grid_layout_2.setRowStretch(2, 0)
         self.grid_layout_2.setRowStretch(3, 0)
+        self.page_layout.setRowStretch(1, 0)
+        self.grid_layout_1.setRowStretch(0, 0)
+        self.grid_layout_1.setRowStretch(1, 0)
+        self.grid_layout_1.setRowStretch(2, 0)
         self.grid_layout_1.setColumnStretch(0, 1)
         self.grid_layout_2.setColumnStretch(0, 1)
 
-        # Создаем вспомогательный виджет для второго фона в QVBoxLayout
-        self.page_layout.addWidget(self.color_widget_1, 1, 0)
-        self.page_layout.addWidget(self.color_widget_2, 3, 0)
+        # Создаем вспомогательный виджет для второго фона
+        self.page_layout.addWidget(self.color_widget_2, 1, 0)        
+        self.page_layout.addWidget(self.color_widget_1, 3, 0)
+
 
         # Заполнение таблицы данными из DataFrame 
         for row in range(len(self.columns_df)):
@@ -327,7 +330,7 @@ class SettingsLayout(QWidget):
 
 
     def LLM_input(self):
-        self.LLM_input_text = self.text_input.text()
+        self.LLM_input_text = self.text_input.toPlainText()
         LLM_input_engine(self.LLM_input_text)                    # TODO <- Функция загрузки из engine.py
      
 
@@ -343,26 +346,26 @@ class ControlLayout(QWidget):
         self.page_layout.setContentsMargins(40, 40, 40, 40)
         self.grid_layout = QGridLayout()
         self.grid_layout.setContentsMargins(40, 40, 40, 40)
+        self.progress_bar_widget = ProgressBarWidget()
 
         # Создаем виджеты
         self.label1 = QLabel("Контроль вывода")
         self.label2 = QLabel("Таблица контроля выбранных столбцов")
         self.check_table = QTableWidget()
         self.columns_settings_df = control_table_columns_engine()                        # TODO <- Функция загрузки из engine.py
-        self.check_table.setRowCount(len(self.columns_settings_df))
-        self.check_table.setColumnCount(len(self.columns_settings_df.columns))
-        self.check_table.setHorizontalHeaderLabels(self.columns_settings_df.columns)
+        self.progress_button = QPushButton("Запуск формирования таблицы с LLM")
         self.button1 = QPushButton("Оставить только выбранные столбцы")
         self.button2 = QPushButton("Вернуть начальную подборку")
-        self.button3 = QPushButton("Запуск формирования таблицы с LLM")
+        self.button3 = QPushButton("Сформировать итоговую таблицу")
         
         spacer = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         # Устанавливаем фиксированные размеры для виджетов   
-        self.check_table.setMinimumSize(200, 400)
+        self.check_table.setMinimumSize(200, 300)
         self.button1.setMinimumSize(200, 50)
         self.button2.setMinimumSize(200, 50)
         self.button3.setMinimumSize(200, 50)
+        self.progress_button.setMinimumSize(200, 50)
 
         # Устанавливаем цвет фона виджета
         self.color_widget = QWidget()
@@ -376,10 +379,12 @@ class ControlLayout(QWidget):
         self.grid_layout.addWidget(self.color_widget, 0, 0, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout.addWidget(self.label2, 0, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout.addWidget(self.check_table, 1, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
-        self.grid_layout.addWidget(self.button1, 2, 0, alignment=Qt.AlignmentFlag.AlignTop)
-        self.grid_layout.addWidget(self.button2, 2, 1, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout.addWidget(self.progress_button, 2, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout.addWidget(self.progress_bar_widget, 3, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout.addWidget(self.button1, 4, 0, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout.addWidget(self.button2, 4, 1, alignment=Qt.AlignmentFlag.AlignTop)
 
-        self.page_layout.addWidget(self.button3, 2, 0)
+        self.page_layout.addWidget(self.button3, 2, 0)     
         
         self.page_layout.addItem(spacer, 2, 0)
 
@@ -387,28 +392,36 @@ class ControlLayout(QWidget):
         self.grid_layout.setRowStretch(0, 0)
         self.grid_layout.setRowStretch(1, 0)
         self.grid_layout.setRowStretch(2, 0)
-        self.grid_layout.setRowStretch(3, 1)
+        self.grid_layout.setRowStretch(3, 0)
+        self.grid_layout.setRowStretch(4, 1)
         self.grid_layout.setColumnStretch(0, 1)
         self.grid_layout.setColumnStretch(1, 1)
 
         # Создание первичной backup версии таблицы
         self.backup_table = self.columns_settings_df
         
-        # Заполнение таблицы данными из DataFrame 
-        self.update_table(self.columns_settings_df)
-
         # Подключаем сигнал нажатия на кнопки запуска LLM
         self.button1.pressed.connect(lambda: self.update_columns(self.columns_settings_df))
         self.button2.pressed.connect(lambda: self.update_table(self.backup_table))
-        self.button3.pressed.connect(lambda: self.start_LLM(self.updated_df))         
+        self.button3.pressed.connect(lambda: self.start_LLM(self.updated_df))
 
+        # Подключаем сигнал нажатия на кнопку запуска формирования таблицы
+        self.progress_button.pressed.connect(lambda: self.start_formation(self.columns_settings_df))
+        
         # Подключение сигнала изменения ячейки к обработчику
         self.check_table.cellClicked.connect(self.update_data)
         
         # Создаем вспомогательный виджет для второго фона в QVBoxLayout
         self.page_layout.addWidget(self.color_widget, 1, 0)
     
-    
+    def start_formation(self, dataframe):
+        self.update_table(dataframe)
+        data = list(range(100))  # Замените на реальные данные для обработки
+        self.worker_thread = WorkerThread(data)
+        self.worker_thread.progress_changed.connect(self.progress_bar_widget.set_progress)
+        self.worker_thread.start()
+
+
     def update_table(self, dataframe):
         # Заполнение таблицы данными из DataFrame
         self.check_table.clearContents()
@@ -426,7 +439,6 @@ class ControlLayout(QWidget):
         # Функция обновления таблицы с учетом отмеченных ячеек
         updated_dict = {col: [] for col in dataframe.columns}
         for col in range(len(dataframe.columns)):
-            col_data = {}
             for row in range(len(dataframe)):
                 item = self.check_table.item(row, col)
                 if col == 0 or col == (len(dataframe.columns) - 1):
@@ -440,7 +452,7 @@ class ControlLayout(QWidget):
 
 
     def start_LLM(self, dataframe):
-        update_table_columns_engine(dataframe)          # TODO <- Функция загрузки из engine.py
+        start_LLM_engine(dataframe)          # TODO <- Функция загрузки из engine.py
     
     
     def update_item(self, row, col, dataframe):
@@ -651,6 +663,10 @@ class MainWindow(QMainWindow):
                 color: #00B5FF;
             }
             QLabel {
+                color: #f0f0f0;
+                font-size: 12px;
+            }
+            QProgressBar {
                 color: #f0f0f0;
                 font-size: 12px;
             }
