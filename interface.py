@@ -1,5 +1,7 @@
 import sys
+import os
 import pandas as pd
+from pathlib import Path
 from PyQt6.QtGui import QPixmap, QColor
 from PyQt6.QtCore import (
     QSize, Qt, QBasicTimer, QCoreApplication,
@@ -25,10 +27,34 @@ from engine import (
     create_file_engine
 )
 
+# from Get_dictionary_Michael import Get_DF_from_Dictionary, Get_Small_Dictionary_from_Excel, select_excel_files, Get_ALL_Dictionary_from_Excel
+# from Multilingual_e5_Vlad import get_words_from_multilingual_e5_base
+# from Multilingual_Alex import get_words_from_multilingual_bert
+# import pandas as pd
+# import copy
+# import os
+from Test import Get_global_dict
+from Ask_Gigachat import Get_Answer_LLM
 
 #-----------------------------------------------------------------------------------------------------------------------------
 # Основной код интерфейса
 #-----------------------------------------------------------------------------------------------------------------------------
+
+'''
+Глобальные переменнные
+'''
+
+# Глобальный словарь для таблиц
+final_global_dict = {}
+
+# Список групп столбцов
+columns_list =[]
+
+# Список файлов
+files_list = []
+
+
+
 
 class ProgressBarWidget(QWidget):
     '''
@@ -196,32 +222,35 @@ class UploadLayout(QWidget):
         self.page_layout.addWidget(self.color_widget, 1, 0)
 
         # Список загружаемых файлов
-        self.files_list = []
+        
 
 
     def add_file(self):
         # Открываем диалоговое окно для выбора файла
+        global files_list
         file_names, _ = QFileDialog.getOpenFileNames(self, "Открыть файлы", "", "Все файлы (*);;Текстовые файлы (*.txt)")
         if file_names:
             for name in file_names:
-                if name not in self.files_list:
-                    self.files_list.append(name)
+                if name not in files_list:
+                    files_list.append(rf'{Path(name)}')
                     self.file_list_widget.addItem(name)                       
 
 
     def remove_file(self):
         # Удаляем выбранный файл из списка
+        global files_list
         selected_items = self.file_list_widget.selectedItems()
         if not selected_items:
             return
         for item in selected_items:
-            self.files_list.remove(item.text())
+            files_list.remove(item.text())
             self.file_list_widget.takeItem(self.file_list_widget.row(item))                         
     
 
     def load_file(self):
         # Загружаем файлы в engine.py
-        load_files_engine(self.files_list)              # TODO <- Функция загрузки из engine.py
+        global files_list
+        load_files_engine(files_list)              # TODO <- Функция загрузки из engine.py
 
 
 class SettingsLayout(QWidget):
@@ -248,10 +277,13 @@ class SettingsLayout(QWidget):
         self.label1 = QLabel("Настройка запроса")
         self.label2 = QLabel("Таблица контроля выбранных столбцов")
         self.check_table = QTableWidget()
-        self.columns_df = table_columns_engine()                        # TODO <- Функция загрузки из engine.py
-        self.check_table.setRowCount(len(self.columns_df))
-        self.check_table.setColumnCount(len(self.columns_df.columns))
-        self.check_table.setHorizontalHeaderLabels(self.columns_df.columns)
+
+        # global columns_list
+        # columns_list, self.columns_df = self.Get_Answer_LLM_interface(self.text_input.toPlainText())
+        # self.columns_df = self.Get_Answer_LLM_interface(self.text_input.toPlainText())                     # TODO <- Функция загрузки из engine.py
+        # self.check_table.setRowCount(len(self.columns_df))
+        # self.check_table.setColumnCount(len(self.columns_df.columns))
+        # self.check_table.setHorizontalHeaderLabels(self.columns_df.columns)
 
         spacer = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
@@ -301,37 +333,68 @@ class SettingsLayout(QWidget):
         # Создаем вспомогательный виджет для второго фона
         self.page_layout.addWidget(self.color_widget_2, 1, 0)        
         self.page_layout.addWidget(self.color_widget_1, 3, 0)
+              
 
+        # # Заполнение таблицы данными из DataFrame 
+        # for row in range(len(self.columns_df)):
+        #     for col in range(len(self.columns_df.columns)):
+        #         self.check_table.setItem(row, col, QTableWidgetItem(str(self.columns_df.iloc[row, col])))
 
-        # Заполнение таблицы данными из DataFrame 
-        for row in range(len(self.columns_df)):
-            for col in range(len(self.columns_df.columns)):
-                self.check_table.setItem(row, col, QTableWidgetItem(str(self.columns_df.iloc[row, col])))
-
-        # Установить ширину столбцов и высоту строк
-        for col in range(len(self.columns_df.columns)):
-            self.check_table.setColumnWidth(col, 730)
+        # # Установить ширину столбцов и высоту строк
+        # for col in range(len(self.columns_df.columns)):
+        #     self.check_table.setColumnWidth(col, 730)
 
         # Подключение сигнала изменения ячейки к обработчику
         self.check_table.cellChanged.connect(self.update_data)
 
         # Подключаем сигнал нажатия на кнопки запуска LLM
-        self.button1.pressed.connect(self.LLM_input)
+        self.button1.pressed.connect(self.update_table_LLM_input)
 
         # Задаем пустое начальное значение ввода для LLM
         self.LLM_input_text = ''
 
+    def update_table_LLM_input(self):
+        global columns_list
+        columns_list, dataframe = self.Get_Answer_LLM_interface(self.text_input.toPlainText())
+        self.check_table.clearContents()
+        self.check_table.setRowCount(len(dataframe))
+        self.check_table.setColumnCount(len(dataframe.columns))
+        self.check_table.setHorizontalHeaderLabels(dataframe.columns)
+
+        for row in range(len(dataframe)):
+            for col in range(len(dataframe.columns)):
+                self.check_table.setItem(row, col, QTableWidgetItem(str(dataframe.iloc[row, col])))
+        
+        for col in range(len(dataframe.columns)):
+            self.check_table.setColumnWidth(col, 730)
+        print(columns_list)
+
 
     def update_data(self, row, col):
         # Обновление DataFrame при изменении данных в таблице
+        global columns_list
         new_value = self.check_table.item(row, col).text()
-        self.columns_df.iloc[row, col] = new_value
-        update_table_columns_engine(self.columns_df, row, col, new_value)      # TODO <- Функция загрузки из engine.py
+        columns_list[row] = new_value
+        print(columns_list)      # TODO <- Функция загрузки из engine.py
 
 
-    def LLM_input(self):
-        self.LLM_input_text = self.text_input.toPlainText()
-        LLM_input_engine(self.LLM_input_text)                    # TODO <- Функция загрузки из engine.py
+    # def LLM_input(self):
+    #     self.LLM_input_text = self.text_input.toPlainText()
+    #     LLM_input_engine(self.LLM_input_text)                    # TODO <- Функция загрузки из engine.py
+
+    def Get_Answer_LLM_interface(self, request_text):
+        #промт в гигачат
+        request_promt = f'Из следующего предложения вычлени заголовки для таблицы в виде списка: {request_text}'
+        #получаем ответ от гигачата
+        request = Get_Answer_LLM(request_text,request_promt)
+        #Постобработка ответа гигачата
+        request = request.splitlines()
+        # Удаление номеров элементов
+        request = [элемент.split('.', 1)[-1].strip() for элемент in request if элемент.strip()]
+        request = [item for item in request if ("Заголовки" not in item and "заголовки" not in item)]
+        request_dict = {'Наименование групп столбцов': request}
+        request_df = pd.DataFrame(request_dict)     
+        return request, request_df
      
 
 class ControlLayout(QWidget):
@@ -397,8 +460,13 @@ class ControlLayout(QWidget):
         self.grid_layout.setColumnStretch(0, 1)
         self.grid_layout.setColumnStretch(1, 1)
 
+        # Задаем количество возвращаемых заголовков
+        quantity = 3
+
+        self.backup_global_dict = {}
+        
         # Создание первичной backup версии таблицы
-        self.backup_table = self.columns_settings_df
+        # backup_global_dict = Get_global_dict(SettingsLayout().columns_df, 0, 0)
         
         # Подключаем сигнал нажатия на кнопки запуска LLM
         self.button1.pressed.connect(lambda: self.update_columns(self.columns_settings_df))
@@ -406,20 +474,30 @@ class ControlLayout(QWidget):
         self.button3.pressed.connect(lambda: self.start_LLM(self.updated_df))
 
         # Подключаем сигнал нажатия на кнопку запуска формирования таблицы
-        self.progress_button.pressed.connect(lambda: self.start_formation(self.columns_settings_df))
+        global columns_list
+        global files_list
+        self.progress_button.pressed.connect(lambda: self.start_formation(columns_list, quantity, files_list))
         
         # Подключение сигнала изменения ячейки к обработчику
         self.check_table.cellClicked.connect(self.update_data)
         
         # Создаем вспомогательный виджет для второго фона в QVBoxLayout
         self.page_layout.addWidget(self.color_widget, 1, 0)
+
+
+    def start_formation(self, list, quantity, files_list):
+        print(list)
+        print(quantity)  
+        print(files_list)          
+        global final_global_dict
+        final_global_dict = Get_global_dict(list, quantity, files_list)
     
-    def start_formation(self, dataframe):
-        self.update_table(dataframe)
-        data = list(range(100))  # Замените на реальные данные для обработки
-        self.worker_thread = WorkerThread(data)
-        self.worker_thread.progress_changed.connect(self.progress_bar_widget.set_progress)
-        self.worker_thread.start()
+        # self.update_table(dataframe)
+        # data = list(range(100))  # Замените на реальные данные для обработки
+        # self.worker_thread = WorkerThread(data)
+        # self.worker_thread.progress_changed.connect(self.progress_bar_widget.set_progress)
+        # self.worker_thread.start()
+
 
 
     def update_table(self, dataframe):
@@ -547,12 +625,48 @@ class ResultLayout(QWidget):
         self.page_layout.addWidget(self.color_widget, 1, 0)
 
         # Подключаем сигнал нажатия на кнопки
-        self.button1.clicked.connect(self.create_file)
+        global final_global_dict
+        self.button1.clicked.connect(lambda: self.Get_Excel(final_global_dict))
 
     
-    def create_file(self):
-        # Функция запуска создания файла
-        create_file_engine(self.table_preview_df)               # TODO <- Функция загрузки из engine.py
+    # def create_file(self):
+    #     # Функция запуска создания файла
+    #     create_file_engine(self.table_preview_df)               # TODO <- Функция загрузки из engine.py
+
+
+    def Get_Excel(self, global_dict):
+        # Создание DataFrame для экспорта в Excel
+        df = pd.DataFrame(columns=global_dict.keys())
+        # Добавление данных в DataFrame
+        i=-1
+        for key in global_dict:
+            i=i+1
+            values=[]
+            #Извлекаем большие словари для каждого ключа
+            s_big=global_dict[key][0]
+            #Заходим внутрь, тут еще один словарь, где ключи это заголовки
+            for excel_key in s_big:
+                s_excel_big= s_big[excel_key]
+                #Заходим в последнюю матрешку,в словарь, где ключи заголовки
+                for zagolovok_excel_key in s_excel_big:
+                    values.extend(s_excel_big[zagolovok_excel_key].values)
+            # Проверяем, нужно ли изменить размер DataFrame
+            num_rows = len(df)
+            num_values = len(values)
+            if num_values > num_rows:
+                # Увеличиваем DataFrame до нужного размера
+                df = df.reindex(range(num_values))
+            elif num_values < num_rows:
+                # Обрезаем DataFrame до нужного размера
+                df = df.iloc[:num_values]
+            df.iloc[:, i] = values
+        # Сохранение DataFrame в Excel
+        if os.path.exists('output.xlsx'):
+            os.remove('output.xlsx')
+            print(f"Файл {'output.xlsx'} успешно удален.")
+        else:
+            print(f"Файл {'output.xlsx'} не существует.")
+        df.to_excel('output.xlsx', index=False)
 
 
 class MainWindow(QMainWindow):
@@ -675,6 +789,8 @@ class MainWindow(QMainWindow):
     def activate_tab(self, index):
         # Функция активации вкладки меню
         self.stack_layout.setCurrentIndex(index)
+
+
 
 app = QApplication(sys.argv)
 w = MainWindow()
