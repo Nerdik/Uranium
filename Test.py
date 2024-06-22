@@ -1,6 +1,6 @@
 from Get_dictionary_Michael import Get_DF_from_Dictionary, Get_Small_Dictionary_from_Excel, select_excel_files, Get_ALL_Dictionary_from_Excel
 from Multilingual_e5_Vlad import get_words_from_multilingual_e5_base
-from Multilingual_Alex import get_words_from_multilingual_bert
+#from Multilingual_Alex import get_words_from_multilingual_bert
 import pandas as pd
 import copy
 import os
@@ -10,18 +10,19 @@ from Ask_Gigachat import Get_Answer_LLM
 def Get_global_dict(request, quantity, path):
     #получаем словарь с заголовками
     s_small=Get_Small_Dictionary_from_Excel(path)
-    print('Малый словарь',s_small)
+    print('Малый словарь нефильтрованный',s_small)
     #получаем весь словарь
     s_big=Get_ALL_Dictionary_from_Excel(path)
-    print('Большой словарь: ',s_big)
+    print('Большой словарь нефильтрованный: ',s_big)
     # Создание нового словаря, в котором ключи это запросы пользователя, глобальный словарь, в него входят девственные большой и малый словари
     global_dict = {key: [copy.deepcopy(s_big),copy.deepcopy(s_small)] for key in request}
-    print('Глобальный словарь чистый: ',global_dict)
+    print('Глобальный словарь нефильтрованный: ',global_dict)
     i=0
     # Проход по всем ключам словаря и передача значения s в функцию
     for key in global_dict:
         i=i+1
         s_value = global_dict[key][1]  # Получение значения s из списка
+        s_value_big=global_dict[key][0]
         print('Малый словарь для передачи в multi для значения пользователя '+str(key)+': ',s_value)
         # #получаем датафрейм из малого словаря для передачи в multi
         test_texts=Get_DF_from_Dictionary(s_value)
@@ -33,14 +34,14 @@ def Get_global_dict(request, quantity, path):
         answer=new_list
         print('Multilingul вернул для значения пользователя '+str(key)+': ',answer)
         # Удаление значений из малого словаря
-        for key1 in s_small.keys():
-            s_small[key1] = [value for value in s_small[key1] if value in answer]
-        print('Отформотированный малый словарь для значения пользователя '+str(key)+': ',s_small) 
+        for key1 in s_value:
+            s_value[key1] = [value for value in s_value[key1] if value in answer]
+        print('Отформотированный малый словарь для значения пользователя '+str(key)+': ',s_value) 
         # Удаление значений из большого словаря
-        for outer_key in s_big:
-            s_big[outer_key] = {k: v for k, v in s_big[outer_key].items() if k in answer}
-        print('Отформатированный большой словарь для значения пользователя'+str(key)+': ',s_big)
-        global_dict[key]=[copy.deepcopy(s_big),copy.deepcopy(s_small)]
+        for outer_key in s_value_big:
+            s_value_big[outer_key] = {k: v for k, v in s_value_big[outer_key].items() if k in answer}
+        print('Отформатированный большой словарь для значения пользователя'+str(key)+': ',s_value_big)
+        global_dict[key]=[copy.deepcopy(s_value_big),copy.deepcopy(s_value)]
     return global_dict
 
 # #In[0]

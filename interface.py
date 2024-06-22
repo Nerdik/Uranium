@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QStackedLayout, QHBoxLayout, QVBoxLayout,
     QLineEdit, QSpacerItem, QSizePolicy, QProgressBar
 )
-
+from Get_dictionary_Michael import CreateDF_FromGlobalDict
 from engine import (
     load_files_engine,
     LLM_input_engine,
@@ -52,6 +52,9 @@ columns_list =[]
 
 # Список файлов
 files_list = []
+
+# Количество выводимых вариантов столбцов
+quantity = 3
 
 
 
@@ -461,7 +464,7 @@ class ControlLayout(QWidget):
         self.grid_layout.setColumnStretch(1, 1)
 
         # Задаем количество возвращаемых заголовков
-        quantity = 3
+        # global quantity = 3
 
         self.backup_global_dict = {}
         
@@ -476,6 +479,7 @@ class ControlLayout(QWidget):
         # Подключаем сигнал нажатия на кнопку запуска формирования таблицы
         global columns_list
         global files_list
+        global quantity
         self.progress_button.pressed.connect(lambda: self.start_formation(columns_list, quantity, files_list))
         
         # Подключение сигнала изменения ячейки к обработчику
@@ -486,11 +490,14 @@ class ControlLayout(QWidget):
 
 
     def start_formation(self, list, quantity, files_list):
-        print(list)
-        print(quantity)  
-        print(files_list)          
+         
         global final_global_dict
+        print('Список запросов: ',list)
         final_global_dict = Get_global_dict(list, quantity, files_list)
+        # for key in final_global_dict.keys():
+        #     print('Малый словарь после мульти:',final_global_dict[key][0])
+        color_table = CreateDF_FromGlobalDict(final_global_dict, quantity)
+        self.update_table(color_table)
     
         # self.update_table(dataframe)
         # data = list(range(100))  # Замените на реальные данные для обработки

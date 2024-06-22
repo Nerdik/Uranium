@@ -1,4 +1,3 @@
-# import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import tkinter as tk
@@ -16,30 +15,40 @@ class Xls2Col():
     '''
     def __init__(self, filePathList):
 
-        self.ddmain = {}
-        self.ddsmall = {}
-        
-        ii = 0
-        while ii < len(filePathList):
-            xlsf = pd.ExcelFile(filePathList[ii])
-            filename = filePathList[ii].split('\\')[-1]
+            self.ddmain = {}
+            self.ddsmall = {}
+            self.ddkey = []
+            cc = 0
             
-            jj = 0
-            while jj < len(xlsf.sheet_names):
-                ddkey = '' + filename + ' ; ' + xlsf.sheet_names[jj]
-                print(ddkey)
+            ii = 0
+            while ii < len(filePathList):
+                xlsf = pd.ExcelFile(filePathList[ii])
+                filename = filePathList[ii].split('\\')[-1]
                 
-                df = xlsf.parse(xlsf.sheet_names[jj])
-                headLine,dd = Xls2Col.CreateCollection(df)
-                if headLine != False:
-                    self.ddmain[ddkey] = dd
-                    self.ddsmall[ddkey] = headLine
-                else:
-                    print(ddkey + ' headline wasnt found')
-                jj += 1
+                jj = 0
+                while jj < len(xlsf.sheet_names):                
+                    df = xlsf.parse(xlsf.sheet_names[jj])
+                    dkey = '' + filename + ' ; ' + xlsf.sheet_names[jj]
+                    # print(jj)
+                    print('№  'f"{cc}  " + dkey + '    size of sheet ' + f"{df.size}")
+                    if df.size > 0:
+                        headLine,dd = Xls2Col.CreateCollection(df)
+                        if headLine != False:
+                            # dkey = '' + filename + ' ; ' + xlsf.sheet_names[jj]
+                            # print(dkey + '______' + df.size)
+                            self.ddkey.append(dkey)
+                            self.ddmain[dkey] = dd
+                            self.ddsmall[dkey] = headLine
+                        else:
+                            print('!!! ' + dkey + ' headline wasnt found')
+                    else:
+                        self.ddmain[dkey] = 'sheet is empty'
+                        self.ddsmall[dkey] = 'sheet is empty'
+                        print('!!! ' + dkey + ' sheet is empty')
+                    cc += 1
+                    jj += 1
 
-            ii += 1
-
+                ii += 1
     '''
     Проверка строки на принадлежность к числам
     '''
@@ -150,7 +159,7 @@ class Xls2Col():
         trsh.append(0.10) #columns are not empty if _ count > median(countOfElementsInAllColumns) * trashold 
         trsh.append(0.85) #row is zeros if _ zeros count > countOfElementsInRow * trashold
         trsh.append(0.25) #row is header if _ str count > median(countOfElementsInAllRows) * trashold
-        trsh.append(0.50) #row is data if _ numbers count > median(countOfElementsInAllRows) * trashold
+        trsh.append(0.10) #row is data if _ numbers count > median(countOfElementsInAllRows) * trashold
 
         ii = 0
         notEmptyColumns = []
@@ -169,7 +178,7 @@ class Xls2Col():
             csum = cline[jj][0] + cline[jj][1] + cline[jj][2]
             if (csum != clims[1][jj]):
                 rowsQuestion.append(jj)
-                print('Row ',jj,' with unmarked instance')
+                print(f'Row {jj} with unmarked instance')
             if cline[jj][2] > 0:
                 rowsStr.append(jj)
 
@@ -261,65 +270,66 @@ class Xls2Col():
     '''
     def GetHead(df, headLineStart, headLineMaxRows = 5):
 
-        if (headLineStart >= df.shape[0]):
-            print('headLineStart is out of range')
-            return (-1)
+            if (headLineStart >= df.shape[0]):
+                print('headLineStart is out of range')
+                return (-1)
 
-        ii = 0                 # горизонтальный
-        jj = 0                 # вертикальный
-        iiref = 0              # ссылочный, если было объединение и ячейка пуста
-        fullFieldName = []     # список для полного столбца
-        headLine = []          # полный список
+            ii = 0                 # горизонтальный
+            jj = 0                 # вертикальный
+            iiref = 0              # ссылочный, если было объединение и ячейка пуста
+            fullFieldName = []     # список для полного столбца
+            headLine = []          # полный список
 
-        # Цикл от столбца к столбцу по строкам
-        while ii < df.columns.size:
-            while (jj < headLineMaxRows):
+            # Цикл от столбца к столбцу по строкам
+            while ii < df.columns.size:
+                while (jj < headLineMaxRows):
 
-                # Проверка верхнего элемента шапки
-                # Допущение: только верхний элемент имеет горизонтальное объединение ячеек => ячейки правее - пусты
-                if (jj == 0):
-                    # Если первая ячейка шапки пуста (на всякий случай)
-                    if (pd.isnull(df[df.columns[ii]][jj + headLineStart])) and (iiref == 0):
-                        ii += 1
-                    # Если первая ячейка шапки не пуста
-                    elif (not pd.isnull(df[df.columns[ii]][jj + headLineStart])):
-                        iiref = ii
-                        fullFieldName.append(df[df.columns[ii]][jj + headLineStart])
-                        jj += 1
-                    # Случай объединения ячеек: верхняя пуста, но в предыдущем столбце уже было значение
-                    # Отсюда баг слишком длинного списка, если в файле есть рандомная непустая ячейка далеко справа (чуть позже пофиксится)
-                    elif (pd.isnull(df[df.columns[ii]][0 + headLineStart])) and (iiref > 0):
-                        fullFieldName.append(df[df.columns[iiref]][0 + headLineStart])
-                        jj += 1
-
-                else:
-                    # на всякий случай
-                    if (jj + headLineStart >= df[df.columns[ii]].size):
-                        print('jj is out of range')
-                        return (-1)
-                    else:
-                        # Если встречается число, то считаем, что дошли до значений и шапка закончена - переход на новый столбец
-                        if (Xls2Col.IsNumber(df[df.columns[ii]][jj + headLineStart])):
-                            # print ("NUMBER",ii,"    ",jj)
-                            ii += 1
-                            jj = 0
+                    # Проверка верхнего элемента шапки
+                    # Допущение: только верхний элемент имеет горизонтальное объединение ячеек => ячейки правее - пусты
+                    if (jj == 0):
+                        # Если первая ячейка шапки пуста (на всякий случай)
+                        if (pd.isnull(df[df.columns[ii]][jj + headLineStart])) and (iiref == 0):
+                            # ii += 1
                             break
+                        # Если первая ячейка шапки не пуста
+                        elif (not pd.isnull(df[df.columns[ii]][jj + headLineStart])):
+                            iiref = ii
+                            fullFieldName.append(df[df.columns[ii]][jj + headLineStart])
+                            jj += 1
+                        # Случай объединения ячеек: верхняя пуста, но в предыдущем столбце уже было значение
+                        # Отсюда баг слишком длинного списка, если в файле есть рандомная непустая ячейка далеко справа (чуть позже пофиксится)
+                        elif (pd.isnull(df[df.columns[ii]][0 + headLineStart])) and (iiref > 0):
+                            fullFieldName.append(df[df.columns[iiref]][0 + headLineStart])
+                            jj += 1
+
+                    else:
+                        # на всякий случай
+                        if (jj + headLineStart >= df[df.columns[ii]].size):
+                            print('headline start is out of range')
+                            return (-1)
                         else:
-                            # Если ячейка пуста, то переход на новую строку
-                            if (pd.isnull(df[df.columns[ii]][jj + headLineStart])):
-                                jj += 1
+                            # Если встречается число, то считаем, что дошли до значений и шапка закончена - переход на новый столбец
+                            if (Xls2Col.IsNumber(df[df.columns[ii]][jj + headLineStart])):
+                                # print ("NUMBER",ii,"    ",jj)
+                                # ii += 1
+                                # jj = 0
+                                break
                             else:
-                                # Если ячейка не пуста и не число - добавь значение в список "столбца" и перейди на новую строку
-                                fullFieldName.append(df[df.columns[ii]][jj + headLineStart])
-                                jj += 1
+                                # Если ячейка пуста, то переход на новую строку
+                                if (pd.isnull(df[df.columns[ii]][jj + headLineStart])):
+                                    jj += 1
+                                else:
+                                    # Если ячейка не пуста и не число - добавь значение в список "столбца" и перейди на новую строку
+                                    fullFieldName.append(df[df.columns[ii]][jj + headLineStart])
+                                    jj += 1
 
-            # Запиши список столбца в главный список, перейди на новый столбец и очисти счетчик строк и список столбца
-            headLine.append(fullFieldName)
-            fullFieldName = []
-            ii += 1
-            jj = 0
+                # Запиши список столбца в главный список, перейди на новый столбец и очисти счетчик строк и список столбца
+                headLine.append(fullFieldName)
+                fullFieldName = []
+                ii += 1
+                jj = 0
 
-        return headLine
+            return headLine
         
     '''
     Функция поиска шапки таблицы на странице экселя
@@ -409,3 +419,54 @@ def select_excel_files():
     file_path_list = list(file_paths)
 
     return file_path_list
+
+def CreateDF_FromGlobalDict(data,quantity):
+
+    # Инициализируем пустой список для строк
+    rows = []
+    # Получаем первый ключ словаря
+    first_key = next(iter(data))
+
+    print(data[first_key][1].keys()) 
+
+    # Получаем заголовки из ключей первого элемента
+    columns = list(data[first_key][1].keys())
+    # Добавляем пустой заголовок в начало списка заголовков
+    columns.insert(0, '')
+    # Создаем пустой DataFrame с заданными заголовками
+    df = pd.DataFrame(columns=columns)
+    # Проходим по ключам словаря и заполняем строки
+    for key_req in data.keys():
+        for i in range(quantity):
+            row = []
+            row.append(key_req)
+            print('Добавили запрос пользователя',row)
+            for key_sheets in data[key_req][1].keys():
+                small_dick=data[key_req][1]
+                print('ЩИИИИИИТ',key_sheets)
+                print('Малый словарь',small_dick)
+                row.append(small_dick[key_sheets][i])
+            print('Ккакой раув',row)         
+            # Добавление новой строки
+            if len(df)==0:
+                df.loc[0] = row
+            else:
+                df.loc[len(df)] = row
+       
+
+    return df
+
+def CreateDF_FromGlobalDict2(gd,NN):
+
+    df_dict = {}
+    Col2Req = []
+    for req in gd.keys():
+        for ii in range(NN):
+            Col2Req.append(req)
+        df_dict.update({"User request" : Col2Req})
+        Col2Req = []
+        for sheets in gd[req][0].keys():
+            df_dict.update({sheets : gd[req][0][sheets]})
+    print(df_dict)    
+    df = pd.DataFrame(df_dict)
+    return df
