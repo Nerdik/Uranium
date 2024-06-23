@@ -439,7 +439,10 @@ def CreateDF_FromGlobalDict(data,quantity):
     for key_req in data.keys():
         for i in range(quantity):
             row = []
-            row.append(key_req)
+            if i==0:
+                row.append(key_req)
+            else:
+                row.append('')
             print('Добавили запрос пользователя',row)
             for key_sheets in data[key_req][1].keys():
                 small_dick=data[key_req][1]

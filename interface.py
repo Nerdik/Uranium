@@ -57,6 +57,14 @@ files_list = []
 quantity = 3
 
 
+# # Бэкап таблицы перед ее форматированием цветами
+# backup_table = {}
+
+
+# # Таблица для работы с цветовым выбором
+# color_table = {}
+
+
 
 
 class ProgressBarWidget(QWidget):
@@ -280,6 +288,8 @@ class SettingsLayout(QWidget):
         self.label1 = QLabel("Настройка запроса")
         self.label2 = QLabel("Таблица контроля выбранных столбцов")
         self.check_table = QTableWidget()
+        self.button2 = QPushButton("Добавить строку")
+        self.button3 = QPushButton("Удалить строку")  
 
         # global columns_list
         # columns_list, self.columns_df = self.Get_Answer_LLM_interface(self.text_input.toPlainText())
@@ -294,6 +304,8 @@ class SettingsLayout(QWidget):
         self.button1.setMinimumSize(200, 50)
         self.text_input.setMinimumSize(200, 50)
         self.check_table.setMinimumSize(200, 200)
+        self.button2.setMinimumSize(200, 50)
+        self.button3.setMinimumSize(450, 50)
 
         # Устанавливаем цвет фона виджета
         self.color_widget_1 = QWidget()
@@ -317,19 +329,22 @@ class SettingsLayout(QWidget):
         self.grid_layout_1.addWidget(self.color_widget_1, 0, 0, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout_1.addWidget(self.label2, 1, 0, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout_1.addWidget(self.check_table, 2, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout_1.addWidget(self.button2, 3, 0, alignment=Qt.AlignmentFlag.AlignTop)  
+        self.grid_layout_1.addWidget(self.button3, 3, 1, alignment=Qt.AlignmentFlag.AlignTop)  
 
-        self.page_layout.addItem(spacer, 4, 0, 1, 2)
+        self.page_layout.addItem(spacer, 4, 0)
 
         # Устанавливаем stretch-факторы
         self.page_layout.setRowStretch(0, 0)
         self.grid_layout_2.setRowStretch(0, 0)
         self.grid_layout_2.setRowStretch(1, 0)
         self.grid_layout_2.setRowStretch(2, 0)
-        self.grid_layout_2.setRowStretch(3, 0)
+        self.grid_layout_2.setRowStretch(3, 1)
         self.page_layout.setRowStretch(1, 0)
         self.grid_layout_1.setRowStretch(0, 0)
         self.grid_layout_1.setRowStretch(1, 0)
         self.grid_layout_1.setRowStretch(2, 0)
+        self.grid_layout_1.setRowStretch(3, 1)
         self.grid_layout_1.setColumnStretch(0, 1)
         self.grid_layout_2.setColumnStretch(0, 1)
 
@@ -352,6 +367,8 @@ class SettingsLayout(QWidget):
 
         # Подключаем сигнал нажатия на кнопки запуска LLM
         self.button1.pressed.connect(self.update_table_LLM_input)
+        self.button2.pressed.connect(self.add_row_table)
+        self.button3.pressed.connect(self.delete_raw_table)
 
         # Задаем пустое начальное значение ввода для LLM
         self.LLM_input_text = ''
@@ -359,6 +376,9 @@ class SettingsLayout(QWidget):
     def update_table_LLM_input(self):
         global columns_list
         columns_list, dataframe = self.Get_Answer_LLM_interface(self.text_input.toPlainText())
+        # dict1 = {'Наименование столбца итоговой таблицы': ['Скважина', 'Газ', 'Добыча']}
+        # dataframe = pd.DataFrame(dict1)
+        # columns_list = ['Скважина', 'Газ', 'Добыча']
         self.check_table.clearContents()
         self.check_table.setRowCount(len(dataframe))
         self.check_table.setColumnCount(len(dataframe.columns))
@@ -370,7 +390,41 @@ class SettingsLayout(QWidget):
         
         for col in range(len(dataframe.columns)):
             self.check_table.setColumnWidth(col, 730)
-        print(columns_list)
+
+    def add_row_table(self):
+        columns_list.append('')
+        dict1 = {}                                                                  # TODO <- Функция загрузки из engine.py
+        dict1['Наименование столбца итоговой таблицы'] = columns_list               # TODO <- Функция загрузки из engine.py
+        dataframe = pd.DataFrame(dict1)                                             # TODO <- Функция загрузки из engine.py
+        self.check_table.clearContents()
+        self.check_table.setRowCount(len(dataframe))
+        self.check_table.setColumnCount(len(dataframe.columns))
+        self.check_table.setHorizontalHeaderLabels(dataframe.columns)
+
+        for row in range(len(dataframe)):
+            for col in range(len(dataframe.columns)):
+                self.check_table.setItem(row, col, QTableWidgetItem(str(dataframe.iloc[row, col])))
+        
+        for col in range(len(dataframe.columns)):
+            self.check_table.setColumnWidth(col, 730)
+
+            
+    def delete_raw_table(self):
+        dict1 = {}                                                                  # TODO <- Функция загрузки из engine.py
+        columns_list.pop()
+        dict1['Наименование столбца итоговой таблицы'] = columns_list               # TODO <- Функция загрузки из engine.py
+        dataframe = pd.DataFrame(dict1)                                                    # TODO <- Функция загрузки из engine.py
+        self.check_table.clearContents()
+        self.check_table.setRowCount(len(dataframe))
+        self.check_table.setColumnCount(len(dataframe.columns))
+        self.check_table.setHorizontalHeaderLabels(dataframe.columns)
+
+        for row in range(len(dataframe)):
+            for col in range(len(dataframe.columns)):
+                self.check_table.setItem(row, col, QTableWidgetItem(str(dataframe.iloc[row, col])))
+        
+        for col in range(len(dataframe.columns)):
+            self.check_table.setColumnWidth(col, 730)
 
 
     def update_data(self, row, col):
@@ -462,19 +516,15 @@ class ControlLayout(QWidget):
         self.grid_layout.setRowStretch(4, 1)
         self.grid_layout.setColumnStretch(0, 1)
         self.grid_layout.setColumnStretch(1, 1)
-
-        # Задаем количество возвращаемых заголовков
-        # global quantity = 3
-
-        self.backup_global_dict = {}
-        
+       
         # Создание первичной backup версии таблицы
         # backup_global_dict = Get_global_dict(SettingsLayout().columns_df, 0, 0)
         
         # Подключаем сигнал нажатия на кнопки запуска LLM
-        self.button1.pressed.connect(lambda: self.update_columns(self.columns_settings_df))
-        self.button2.pressed.connect(lambda: self.update_table(self.backup_table))
-        self.button3.pressed.connect(lambda: self.start_LLM(self.updated_df))
+        global backup_table
+        self.button1.pressed.connect(lambda: self.update_colors(color_table))
+        self.button2.pressed.connect(lambda: self.update_table(backup_table))
+        self.button3.pressed.connect(lambda: self.preview_formation(final_global_dict))
 
         # Подключаем сигнал нажатия на кнопку запуска формирования таблицы
         global columns_list
@@ -496,7 +546,10 @@ class ControlLayout(QWidget):
         final_global_dict = Get_global_dict(list, quantity, files_list)
         # for key in final_global_dict.keys():
         #     print('Малый словарь после мульти:',final_global_dict[key][0])
+        global color_table
         color_table = CreateDF_FromGlobalDict(final_global_dict, quantity)
+        global backup_table
+        backup_table = color_table
         self.update_table(color_table)
     
         # self.update_table(dataframe)
@@ -520,24 +573,58 @@ class ControlLayout(QWidget):
                 self.check_table.item(row, col).setBackground(QColor(255, 255, 255))
 
 
-    def update_columns(self, dataframe):
+    def update_colors(self, dataframe):
         # Функция обновления таблицы с учетом отмеченных ячеек
         updated_dict = {col: [] for col in dataframe.columns}
         for col in range(len(dataframe.columns)):
             for row in range(len(dataframe)):
                 item = self.check_table.item(row, col)
-                if col == 0 or col == (len(dataframe.columns) - 1):
+                if col == 0:
                     if item is not None and item.text().strip() != '':
                         updated_dict[dataframe.columns[col]].append(item.text().strip())          
                 elif self.check_table.item(row, col).background().color().red() == 0:
                     updated_dict[dataframe.columns[col]].append(item.text().strip()) 
-                    
-        self.updated_df = pd.DataFrame(updated_dict)
-        self.update_table(self.updated_df)
+        global updated_df          
+        updated_df = pd.DataFrame(updated_dict)
+        self.update_table(updated_df)
 
 
-    def start_LLM(self, dataframe):
-        start_LLM_engine(dataframe)          # TODO <- Функция загрузки из engine.py
+    def preview_formation(self, dict):
+        global updated_df
+        global final_global_dict
+        self.GlobalDFS_Minus_df(final_global_dict, updated_df)
+        self.Get_dataframe_preview(dict)
+        ResultLayout().update_preview_table(df)
+        
+
+    def Get_dataframe_preview(self, global_dict):
+        # Создание DataFrame для экспорта в Excel
+        global df
+        df = pd.DataFrame(columns=global_dict.keys())
+        # Добавление данных в DataFrame
+        i=-1
+        for key in global_dict:
+            i=i+1
+            values=[]
+            #Извлекаем большие словари для каждого ключа
+            s_big=global_dict[key][0]
+            #Заходим внутрь, тут еще один словарь, где ключи это заголовки
+            for excel_key in s_big:
+                s_excel_big = s_big[excel_key]
+                #Заходим в последнюю матрешку,в словарь, где ключи заголовки
+                for zagolovok_excel_key in s_excel_big:
+                    values.extend(s_excel_big[zagolovok_excel_key].values)
+            # Проверяем, нужно ли изменить размер DataFrame
+            num_rows = len(df)
+            num_values = len(values)
+            if num_values > num_rows:
+                # Увеличиваем DataFrame до нужного размера
+                df = df.reindex(range(num_values))
+            elif num_values < num_rows:
+                # Обрезаем DataFrame до нужного размера
+                df = df.iloc[:num_values]
+            df.iloc[:, i] = values
+        
     
     
     def update_item(self, row, col, dataframe):
@@ -547,26 +634,56 @@ class ControlLayout(QWidget):
     
     def update_data(self, row, col):
         # Функция обновления данных ячейки 
-        if col != 0 and col != (len(self.columns_settings_df.columns) - 1):
+        if col != 0:
             cell = self.check_table.item(row, col).background().color().red()
             match cell:
                 case 255:
                     self.check_table.item(row, col).setBackground(QColor(0, 255, 0))
                 case 0:
                     self.check_table.item(row, col).setBackground(QColor(255, 255, 255))
-        elif col == (len(self.columns_settings_df.columns) - 1):
-            cell = self.check_table.item(row, col).text()
-            match cell:
-                case 'да':
-                    new_value = 'нет'
-                    self.columns_settings_df.iloc[row, col] = new_value
-                    self.update_item(row, col, self.columns_settings_df)
-                case 'нет':
-                    new_value = 'да'
-                    self.columns_settings_df.iloc[row, col] = new_value
-                    self.update_item(row, col, self.columns_settings_df)
-                case '':
-                    pass
+
+
+
+    def GlobalDFS_Minus_df(self, dfs_global, df):
+    # Получение списка значений первого столбца датафрейма
+        valid_keys = df.iloc[:, 0].tolist()
+        
+        # Очистка словаря dfs_global
+        cleaned_dfs_global = {}
+        for key, small_list in dfs_global.items():
+            if key in valid_keys:
+                # Копируем первый элемент списка без изменений
+                cleaned_small_list = [small_list[0]]
+                if len(small_list) > 1:
+                    small_dict = small_list[1]
+                    cleaned_small_dict = {}
+                    for sub_key, sub_values in small_dict.items():
+                        if sub_key in df.columns:
+                            cleaned_sub_values = [val for val in sub_values if val in df[sub_key].values]
+                            cleaned_small_dict[sub_key] = cleaned_sub_values
+                    cleaned_small_list.append(cleaned_small_dict)
+                cleaned_dfs_global[key] = cleaned_small_list
+        for key in cleaned_dfs_global.items():
+            cleaned_dfs_global[key][0]= BigDfs_Minus_Smalldfs(cleaned_dfs_global[key][0],cleaned_dfs_global[key][1])
+        # Вывод результата
+        print('Очищенный ',cleaned_dfs_global)
+        return cleaned_dfs_global
+
+def BigDfs_Minus_Smalldfs(s_big,s_small):
+    #Вычитание из большого словаря маленького
+    # Получаем путь к файлу и лист
+    file_path = list(s_small.keys())[0]
+    # Получаем список допустимых столбцов из первого словаря
+    valid_columns = s_small[file_path]
+    # Отфильтровываем столбцы второго словаря
+    filtered_data = {key: value for key, value in s_big[file_path].items() if key in valid_columns}
+
+    # Обновляем второй словарь
+    filtered_dict2 = {file_path: filtered_data}
+
+    # Печатаем результат
+    print('Отформатированный список:',filtered_dict2)
+    return filtered_dict2
 
 
 class ResultLayout(QWidget):
@@ -587,9 +704,7 @@ class ResultLayout(QWidget):
         self.label2 = QLabel("Предварительный просмотр итоговой таблицы")
         self.check_table = QTableWidget()
         self.table_preview_df = table_file_preview_engine()                        # TODO <- Функция загрузки из engine.py
-        self.check_table.setRowCount(len(self.table_preview_df))
-        self.check_table.setColumnCount(len(self.table_preview_df.columns))
-        self.check_table.setHorizontalHeaderLabels(self.table_preview_df.columns)
+        
         self.button1 = QPushButton("Создать файл Excel")
 
         spacer = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
@@ -621,19 +736,13 @@ class ResultLayout(QWidget):
         self.grid_layout.setRowStretch(2, 0)
         self.grid_layout.setRowStretch(3, 1)
         self.grid_layout.setColumnStretch(0, 0)
-        self.grid_layout.setColumnStretch(1, 1)
-
-        # Заполнение таблицы данными из DataFrame 
-        for row in range(len(self.table_preview_df)):
-            for col in range(len(self.table_preview_df.columns)):
-                self.check_table.setItem(row, col, QTableWidgetItem(str(self.table_preview_df.iloc[row, col])))
+        self.grid_layout.setColumnStretch(1, 1)     
         
         # Создаем вспомогательный виджет для второго фона в QVBoxLayout
         self.page_layout.addWidget(self.color_widget, 1, 0)
 
         # Подключаем сигнал нажатия на кнопки
-        global final_global_dict
-        self.button1.clicked.connect(lambda: self.Get_Excel(final_global_dict))
+        self.button1.clicked.connect(lambda: self.Get_Excel(df))
 
     
     # def create_file(self):
@@ -641,32 +750,13 @@ class ResultLayout(QWidget):
     #     create_file_engine(self.table_preview_df)               # TODO <- Функция загрузки из engine.py
 
 
-    def Get_Excel(self, global_dict):
-        # Создание DataFrame для экспорта в Excel
-        df = pd.DataFrame(columns=global_dict.keys())
-        # Добавление данных в DataFrame
-        i=-1
-        for key in global_dict:
-            i=i+1
-            values=[]
-            #Извлекаем большие словари для каждого ключа
-            s_big=global_dict[key][0]
-            #Заходим внутрь, тут еще один словарь, где ключи это заголовки
-            for excel_key in s_big:
-                s_excel_big= s_big[excel_key]
-                #Заходим в последнюю матрешку,в словарь, где ключи заголовки
-                for zagolovok_excel_key in s_excel_big:
-                    values.extend(s_excel_big[zagolovok_excel_key].values)
-            # Проверяем, нужно ли изменить размер DataFrame
-            num_rows = len(df)
-            num_values = len(values)
-            if num_values > num_rows:
-                # Увеличиваем DataFrame до нужного размера
-                df = df.reindex(range(num_values))
-            elif num_values < num_rows:
-                # Обрезаем DataFrame до нужного размера
-                df = df.iloc[:num_values]
-            df.iloc[:, i] = values
+
+                
+
+  
+        
+        
+    def Get_Excel(self, df):   
         # Сохранение DataFrame в Excel
         if os.path.exists('output.xlsx'):
             os.remove('output.xlsx')
