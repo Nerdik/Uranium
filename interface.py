@@ -852,11 +852,38 @@ class ResultLayout(QWidget):
         # Печатаем результат
         print('Отформатированный список:',filtered_dict2)
         return filtered_dict2
-        
+    
+    def transform_dfs(self,  dfs_global, df):
+        # Создаем структуру для результата
+        dfs_global_example = {}
+
+        # Пройдемся по строкам в df
+        for idx, row in df.iterrows():
+            key = row['']  # Получаем ключ (первый столбец)
+            if key in dfs_global:
+                dfs_big, dfs_small = dfs_global[key]
+                new_dfs_big = {}
+                new_dfs_small = {}
+                
+                for col in df.columns[1:]:  # Пропускаем первый столбец
+                    value = row[col]
+                    if value in dfs_big[col]:
+                        if col not in new_dfs_big:
+                            new_dfs_big[col] = {}
+                        new_dfs_big[col][value] = dfs_big[col][value]
+
+                    if value in dfs_small[col]:
+                        if col not in new_dfs_small:
+                            new_dfs_small[col] = []
+                        new_dfs_small[col].append(value)
+                        
+                dfs_global_example[key] = [new_dfs_big, new_dfs_small]
+
+        return dfs_global_example    
         
     def Get_Excel_sequent(self, df, dict):
         global updated_df
-        minus_dict = self.GlobalDFS_Minus_df(dict, updated_df)
+        minus_dict = self.transform_dfs(dict, updated_df)
         df = self.Get_dataframe_preview(minus_dict)
         self.update_preview_table(df)
         # Сохранение DataFrame в Excel
@@ -886,7 +913,7 @@ class ResultLayout(QWidget):
         global updated_df
         print('До обработки был такой словарь ',dict)
         print('Вычитается такой df: ',updated_df)
-        minus_dict = self.GlobalDFS_Minus_df(dict, updated_df)
+        minus_dict = self.transform_dfs(dict, updated_df)
         df = self.create_dataframe_from_dfs_global(minus_dict)
         self.update_preview_table(df)
         # Сохранение DataFrame в Excel
