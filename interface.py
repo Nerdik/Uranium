@@ -2,7 +2,7 @@ import sys
 import os
 import pandas as pd
 from pathlib import Path
-from PyQt6.QtGui import QPixmap, QColor
+from PyQt6.QtGui import QPixmap, QColor 
 from PyQt6.QtCore import (
     QSize, Qt, QBasicTimer, QCoreApplication,
     QThread, pyqtSignal
@@ -13,7 +13,8 @@ from PyQt6.QtWidgets import (
     QFileDialog, QTextEdit, QListWidget, QListWidgetItem,
     QTableView, QTableWidgetItem, QTableWidget,
     QStackedLayout, QHBoxLayout, QVBoxLayout,
-    QLineEdit, QSpacerItem, QSizePolicy, QProgressBar
+    QLineEdit, QSpacerItem, QSizePolicy, QProgressBar,
+    QDialog
 )
 from Get_dictionary_Michael import CreateDF_FromGlobalDict
 from engine import (
@@ -57,15 +58,72 @@ files_list = []
 quantity = 3
 
 
-# # Бэкап таблицы перед ее форматированием цветами
-# backup_table = {}
+# Инициализация df
+global df
+df = pd.DataFrame()
 
 
-# # Таблица для работы с цветовым выбором
-# color_table = {}
+class LoadFileDialog(QDialog):
+    '''
+    Класс окна диалога с сообщением, что загрузка файлов завершена
+    '''
+    def __init__(self):
+        super(LoadFileDialog, self).__init__()
 
+        self.setWindowTitle("Загрузка файлов")
+        self.setFixedSize(400, 150)
 
+        # Основной макет
+        self.layout = QGridLayout(self)
 
+        cell_widget_1 = QWidget()
+        cell_widget_1.setStyleSheet("background-color: #32363F;")
+
+        # Виджеты 
+        self.label = QLabel("Загрузка файлов завершена")
+
+        # Кнопка ок
+        self.ok_button = QPushButton("OK")
+        self.ok_button.clicked.connect(self.cancel)
+
+        # Устанавливаем фиксированные размеры для виджетов   
+        self.ok_button.setMinimumSize(150, 50)
+        self.ok_button.setMaximumSize(150, 50)
+
+        # Добавление виджетов в макет
+        self.layout.addWidget(self.label, 0, 0, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(self.ok_button, 1, 0, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self.canceled = False
+
+        # Устанавливаем общий цвет фона окна
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #32363F; /* Устанавливаем цвет фона окна */
+            }
+            QPushButton {
+                background-color: #32363F;
+                color: white;
+                border-radius: 5px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #252932;
+                color: #00B5FF;
+            }
+            QLabel {
+                color: #f0f0f0;
+                font-size: 12px;
+            }
+        """)
+
+    def cancel(self):
+        self.canceled = True
+        self.close()
+
+    def is_canceled(self):
+        return self.canceled
+    
 
 class ProgressBarWidget(QWidget):
     '''
@@ -182,7 +240,7 @@ class UploadLayout(QWidget):
         self.grid_layout = QGridLayout()
         self.grid_layout.setContentsMargins(40, 40, 40, 40)
        
-        # Создаем виджеты
+        # Создаем видже
         self.label1 = QLabel("Загрузка файлов")
         self.file_list_widget = QListWidget()
         self.button1 = QPushButton("Добавить файлы")
@@ -261,7 +319,9 @@ class UploadLayout(QWidget):
     def load_file(self):
         # Загружаем файлы в engine.py
         global files_list
-        load_files_engine(files_list)              # TODO <- Функция загрузки из engine.py
+        load_files_engine(files_list)           # TODO Перетащить сюда функцию
+        self.dialog = LoadFileDialog()
+        self.dialog.show()
 
 
 class SettingsLayout(QWidget):
@@ -476,15 +536,15 @@ class ControlLayout(QWidget):
         self.progress_button = QPushButton("Запуск формирования таблицы с LLM")
         self.button1 = QPushButton("Оставить только выбранные столбцы")
         self.button2 = QPushButton("Вернуть начальную подборку")
-        self.button3 = QPushButton("Сформировать итоговую таблицу")
+        # self.button3 = QPushButton("Сформировать итоговую таблицу")
         
         spacer = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         # Устанавливаем фиксированные размеры для виджетов   
-        self.check_table.setMinimumSize(200, 300)
+        self.check_table.setMinimumSize(200, 400)
         self.button1.setMinimumSize(200, 50)
         self.button2.setMinimumSize(200, 50)
-        self.button3.setMinimumSize(200, 50)
+        # self.button3.setMinimumSize(200, 50)
         self.progress_button.setMinimumSize(200, 50)
 
         # Устанавливаем цвет фона виджета
@@ -504,7 +564,7 @@ class ControlLayout(QWidget):
         self.grid_layout.addWidget(self.button1, 4, 0, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout.addWidget(self.button2, 4, 1, alignment=Qt.AlignmentFlag.AlignTop)
 
-        self.page_layout.addWidget(self.button3, 2, 0)     
+        # self.page_layout.addWidget(self.button3, 2, 0)     
         
         self.page_layout.addItem(spacer, 2, 0)
 
@@ -524,7 +584,7 @@ class ControlLayout(QWidget):
         global backup_table
         self.button1.pressed.connect(lambda: self.update_colors(color_table))
         self.button2.pressed.connect(lambda: self.update_table(backup_table))
-        self.button3.pressed.connect(lambda: self.preview_formation(final_global_dict))
+        # self.button3.pressed.connect(lambda: self.preview_formation(final_global_dict))
 
         # Подключаем сигнал нажатия на кнопку запуска формирования таблицы
         global columns_list
@@ -589,13 +649,125 @@ class ControlLayout(QWidget):
         self.update_table(updated_df)
 
 
-    def preview_formation(self, dict):
-        global updated_df
-        global final_global_dict
-        self.GlobalDFS_Minus_df(final_global_dict, updated_df)
-        self.Get_dataframe_preview(dict)
-        ResultLayout().update_preview_table(df)
+    # def preview_formation(self, dict):
+        # global updated_df
+        # minus_dict = self.GlobalDFS_Minus_df(dict, updated_df)
+        # self.Get_dataframe_preview(minus_dict)
+        # ResultLayout().update_preview_table(df)
         
+
+
+        
+    
+    
+    def update_item(self, row, col, dataframe):
+        # Функция обновления отображения данных ячейки в таблице
+        self.check_table.setItem(row, col, QTableWidgetItem(str(dataframe.iloc[row, col])))
+    
+    
+    def update_data(self, row, col):
+        # Функция обновления данных ячейки 
+        if col != 0:
+            cell = self.check_table.item(row, col).background().color().red()
+            match cell:
+                case 255:
+                    self.check_table.item(row, col).setBackground(QColor(0, 255, 0))
+                case 0:
+                    self.check_table.item(row, col).setBackground(QColor(255, 255, 255))
+
+
+class ResultLayout(QWidget):
+    '''
+    Класс вкладки меню Выгрузка результата 
+    '''
+    def __init__(self):
+        super().__init__()
+
+        # Объявляем макеты
+        self.page_layout = QGridLayout(self)
+        self.page_layout.setContentsMargins(40, 40, 40, 40)
+        self.grid_layout = QGridLayout()
+        self.grid_layout.setContentsMargins(40, 40, 40, 40)
+        button_layout = QHBoxLayout()
+
+        # Создаем виджеты
+        self.label1 = QLabel("Выгрузка результата")
+        self.label2 = QLabel("Предварительный просмотр итоговой таблицы")
+        self.check_table = QTableWidget()
+        # self.table_preview_df = table_file_preview_engine()                        # TODO <- Функция загрузки из engine.py
+        
+        self.button1 = QPushButton("Создать Excel последовательно")
+        self.button2 = QPushButton("Создать Excel параллельно")
+
+        spacer = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        # Устанавливаем фиксированные размеры для виджетов   
+        self.check_table.setMinimumSize(200, 500)
+        self.button1.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.button2.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+
+        # Устанавливаем цвет фона виджета
+        self.color_widget = QWidget()
+        self.color_widget.setStyleSheet("background-color: #32363F;")
+
+        # Добавляем виджеты в сетку
+        self.page_layout.setSpacing(20)
+        self.page_layout.addWidget(self.label1)
+        self.page_layout.setSpacing(20)
+
+        self.page_layout.addLayout(self.grid_layout, 1, 0, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout.addWidget(self.color_widget, 0, 0, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout.addWidget(self.label2, 1, 0, 1, 2)
+        self.grid_layout.addWidget(self.check_table, 2, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
+        # self.grid_layout.addWidget(self.button1, 3, 0, alignment=Qt.AlignmentFlag.AlignTop)
+        # self.grid_layout.addWidget(self.button2, 3, 1, alignment=Qt.AlignmentFlag.AlignTop)
+
+        # Создаем горизонтальный макет для кнопок
+        self.grid_layout.addLayout(button_layout, 3, 0, 1, 2)
+        button_layout.addWidget(self.button1)
+        button_layout.addWidget(self.button2)
+
+        # Устанавливаем политику размера для кнопок
+        self.button1.setMinimumSize(200, 50)
+        self.button2.setMinimumSize(200, 50)
+        self.button1.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.button2.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+
+        self.page_layout.addItem(spacer, 2, 0)
+
+        # Устанавливаем stretch-факторы
+        self.grid_layout.setRowStretch(0, 0)
+        self.grid_layout.setRowStretch(1, 0)
+        self.grid_layout.setRowStretch(2, 0)
+        self.grid_layout.setRowStretch(3, 1)
+        self.grid_layout.setColumnStretch(0, 0)
+        self.grid_layout.setColumnStretch(1, 1)     
+        
+        # Создаем вспомогательный виджет для второго фона в QVBoxLayout
+        self.page_layout.addWidget(self.color_widget, 1, 0)
+
+        # Подключаем сигнал нажатия на кнопки
+        global df
+        self.button1.clicked.connect(lambda: self.Get_Excel_sequent(df, final_global_dict))
+        self.button2.clicked.connect(lambda: self.Get_Excel_parallel(df, final_global_dict))
+
+    def update_preview_table(self, dataframe):
+        # Заполнение таблицы данными из DataFrame
+        self.check_table.clearContents()
+        self.check_table.setRowCount(len(dataframe))
+        self.check_table.setColumnCount(len(dataframe.columns))
+        self.check_table.setHorizontalHeaderLabels(dataframe.columns)
+
+        for row in range(len(dataframe)):
+            for col in range(len(dataframe.columns)):
+                self.update_item(row, col, dataframe)
+                self.check_table.item(row, col).setBackground(QColor(255, 255, 255))
+
+
+    def update_item(self, row, col, dataframe):
+        # Функция обновления отображения данных ячейки в таблице
+        self.check_table.setItem(row, col, QTableWidgetItem(str(dataframe.iloc[row, col])))
+
 
     def Get_dataframe_preview(self, global_dict):
         # Создание DataFrame для экспорта в Excel
@@ -624,24 +796,7 @@ class ControlLayout(QWidget):
                 # Обрезаем DataFrame до нужного размера
                 df = df.iloc[:num_values]
             df.iloc[:, i] = values
-        
-    
-    
-    def update_item(self, row, col, dataframe):
-        # Функция обновления отображения данных ячейки в таблице
-        self.check_table.setItem(row, col, QTableWidgetItem(str(dataframe.iloc[row, col])))
-    
-    
-    def update_data(self, row, col):
-        # Функция обновления данных ячейки 
-        if col != 0:
-            cell = self.check_table.item(row, col).background().color().red()
-            match cell:
-                case 255:
-                    self.check_table.item(row, col).setBackground(QColor(0, 255, 0))
-                case 0:
-                    self.check_table.item(row, col).setBackground(QColor(255, 255, 255))
-
+        return df
 
 
     def GlobalDFS_Minus_df(self, dfs_global, df):
@@ -663,100 +818,34 @@ class ControlLayout(QWidget):
                             cleaned_small_dict[sub_key] = cleaned_sub_values
                     cleaned_small_list.append(cleaned_small_dict)
                 cleaned_dfs_global[key] = cleaned_small_list
-        for key in cleaned_dfs_global.items():
-            cleaned_dfs_global[key][0]= BigDfs_Minus_Smalldfs(cleaned_dfs_global[key][0],cleaned_dfs_global[key][1])
+        for key in cleaned_dfs_global.keys():                               # Заменил .items() на .keys()
+            cleaned_dfs_global[key][0]= self.BigDfs_Minus_Smalldfs(cleaned_dfs_global[key][0],cleaned_dfs_global[key][1])
         # Вывод результата
         print('Очищенный ',cleaned_dfs_global)
         return cleaned_dfs_global
 
-def BigDfs_Minus_Smalldfs(s_big,s_small):
-    #Вычитание из большого словаря маленького
-    # Получаем путь к файлу и лист
-    file_path = list(s_small.keys())[0]
-    # Получаем список допустимых столбцов из первого словаря
-    valid_columns = s_small[file_path]
-    # Отфильтровываем столбцы второго словаря
-    filtered_data = {key: value for key, value in s_big[file_path].items() if key in valid_columns}
+    def BigDfs_Minus_Smalldfs(self, s_big,s_small):
+        #Вычитание из большого словаря маленького
+        # Получаем путь к файлу и лист
+        file_path = list(s_small.keys())[0]
+        # Получаем список допустимых столбцов из первого словаря
+        valid_columns = s_small[file_path]
+        # Отфильтровываем столбцы второго словаря
+        filtered_data = {key: value for key, value in s_big[file_path].items() if key in valid_columns}
 
-    # Обновляем второй словарь
-    filtered_dict2 = {file_path: filtered_data}
+        # Обновляем второй словарь
+        filtered_dict2 = {file_path: filtered_data}
 
-    # Печатаем результат
-    print('Отформатированный список:',filtered_dict2)
-    return filtered_dict2
-
-
-class ResultLayout(QWidget):
-    '''
-    Класс вкладки меню Выгрузка результата 
-    '''
-    def __init__(self):
-        super().__init__()
-
-        # Объявляем макеты
-        self.page_layout = QGridLayout(self)
-        self.page_layout.setContentsMargins(40, 40, 40, 40)
-        self.grid_layout = QGridLayout()
-        self.grid_layout.setContentsMargins(40, 40, 40, 40)
-
-        # Создаем виджеты
-        self.label1 = QLabel("Выгрузка результата")
-        self.label2 = QLabel("Предварительный просмотр итоговой таблицы")
-        self.check_table = QTableWidget()
-        self.table_preview_df = table_file_preview_engine()                        # TODO <- Функция загрузки из engine.py
-        
-        self.button1 = QPushButton("Создать файл Excel")
-
-        spacer = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-        # Устанавливаем фиксированные размеры для виджетов   
-        self.check_table.setMinimumSize(200, 500)
-        self.button1.setMinimumSize(200, 50)
-
-        # Устанавливаем цвет фона виджета
-        self.color_widget = QWidget()
-        self.color_widget.setStyleSheet("background-color: #32363F;")
-
-        # Добавляем виджеты в сетку
-        self.page_layout.setSpacing(20)
-        self.page_layout.addWidget(self.label1)
-        self.page_layout.setSpacing(20)
-
-        self.page_layout.addLayout(self.grid_layout, 1, 0, alignment=Qt.AlignmentFlag.AlignTop)
-        self.grid_layout.addWidget(self.color_widget, 0, 0, alignment=Qt.AlignmentFlag.AlignTop)
-        self.grid_layout.addWidget(self.label2, 1, 0, 1, 2)
-        self.grid_layout.addWidget(self.check_table, 2, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
-        self.grid_layout.addWidget(self.button1, 3, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
-
-        self.page_layout.addItem(spacer, 2, 0)
-
-        # Устанавливаем stretch-факторы
-        self.grid_layout.setRowStretch(0, 0)
-        self.grid_layout.setRowStretch(1, 0)
-        self.grid_layout.setRowStretch(2, 0)
-        self.grid_layout.setRowStretch(3, 1)
-        self.grid_layout.setColumnStretch(0, 0)
-        self.grid_layout.setColumnStretch(1, 1)     
-        
-        # Создаем вспомогательный виджет для второго фона в QVBoxLayout
-        self.page_layout.addWidget(self.color_widget, 1, 0)
-
-        # Подключаем сигнал нажатия на кнопки
-        self.button1.clicked.connect(lambda: self.Get_Excel(df))
-
-    
-    # def create_file(self):
-    #     # Функция запуска создания файла
-    #     create_file_engine(self.table_preview_df)               # TODO <- Функция загрузки из engine.py
-
-
-
-                
-
-  
+        # Печатаем результат
+        print('Отформатированный список:',filtered_dict2)
+        return filtered_dict2
         
         
-    def Get_Excel(self, df):   
+    def Get_Excel_sequent(self, df, dict):
+        global updated_df
+        minus_dict = self.GlobalDFS_Minus_df(dict, updated_df)
+        df = self.Get_dataframe_preview(minus_dict)
+        self.update_preview_table(df)
         # Сохранение DataFrame в Excel
         if os.path.exists('output.xlsx'):
             os.remove('output.xlsx')
@@ -764,6 +853,10 @@ class ResultLayout(QWidget):
         else:
             print(f"Файл {'output.xlsx'} не существует.")
         df.to_excel('output.xlsx', index=False)
+
+    
+    def Get_Excel_parallel(self, df, dict):
+        pass
 
 
 class MainWindow(QMainWindow):
@@ -886,7 +979,6 @@ class MainWindow(QMainWindow):
     def activate_tab(self, index):
         # Функция активации вкладки меню
         self.stack_layout.setCurrentIndex(index)
-
 
 
 app = QApplication(sys.argv)

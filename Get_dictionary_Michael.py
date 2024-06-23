@@ -438,25 +438,28 @@ def CreateDF_FromGlobalDict(data,quantity):
     # Проходим по ключам словаря и заполняем строки
     for key_req in data.keys():
         for i in range(quantity):
+            print('Шаг ',i)
             row = []
             if i==0:
                 row.append(key_req)
             else:
                 row.append('')
-            print('Добавили запрос пользователя',row)
+            print('Добавили запрос пользователя',key_req)
+            print('Пока строка выглядит так: ',row)
             for key_sheets in data[key_req][1].keys():
                 small_dick=data[key_req][1]
                 print('ЩИИИИИИТ',key_sheets)
                 print('Малый словарь',small_dick)
+                print('Значения по листу экселя: ',small_dick[key_sheets])
                 row.append(small_dick[key_sheets][i])
+                print('Промежуточная строка выглядит так: ',row)
             print('Ккакой раув',row)         
             # Добавление новой строки
             if len(df)==0:
                 df.loc[0] = row
             else:
                 df.loc[len(df)] = row
-       
-
+    
     return df
 
 def CreateDF_FromGlobalDict2(gd,NN):
