@@ -379,8 +379,8 @@ class Xls2Col():
     # print('Done')
 
 # Извлечение значений из словаря и преобразование в DataFrame с одним столбцом 'text'
-def Get_DF_from_Dictionary(dict):
-    values = list(dict.values())[0]
+def Get_DF_from_Dictionary(dict,key_sheet):
+    values = (dict[key_sheet])
     df = pd.DataFrame(values, columns=['text'])
     return df
 

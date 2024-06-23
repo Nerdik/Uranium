@@ -61,7 +61,48 @@ quantity = 3
 # Инициализация df
 global df
 df = pd.DataFrame()
+    
 
+# class ProgressBarWidget(QWidget):
+#     '''
+#     Класс прогресс-бара 
+#     '''
+#     def __init__(self):
+#         super().__init__()
+#         self.initUI()
+
+#     def initUI(self):
+#         self.layout = QVBoxLayout(self)
+#         self.progress_bar = QProgressBar(self)
+#         self.progress_bar.setMinimum(0)
+#         self.progress_bar.setMaximum(100)
+#         self.layout.addWidget(self.progress_bar)
+
+#     def set_progress(self, value):
+#         self.progress_bar.setValue(value)
+
+
+# class WorkerThread(QThread):
+#     '''
+#     Класс рабочего потока для прогресс-бара
+#     '''
+#     progress_changed = pyqtSignal(int)
+    
+#     def __init__(self, data, parent=None):
+#         super().__init__(parent)
+#         self.data = data
+    
+#     def run(self):
+#         total_steps = len(self.data)
+#         for i, item in enumerate(self.data):
+#             # Ваш длительный процесс здесь
+#             self.do_work(item)
+#             progress = int((i + 1) / total_steps * 100)
+#             self.progress_changed.emit(progress)
+    
+#     def do_work(self, item):
+#         # Имитация работы (заменить на реальную функцию)
+#         QThread.sleep(1)  # Удалить или заменить на реальный процесс
 
 class LoadFileDialog(QDialog):
     '''
@@ -123,48 +164,6 @@ class LoadFileDialog(QDialog):
 
     def is_canceled(self):
         return self.canceled
-    
-
-class ProgressBarWidget(QWidget):
-    '''
-    Класс прогресс-бара 
-    '''
-    def __init__(self):
-        super().__init__()
-        self.initUI()
-
-    def initUI(self):
-        self.layout = QVBoxLayout(self)
-        self.progress_bar = QProgressBar(self)
-        self.progress_bar.setMinimum(0)
-        self.progress_bar.setMaximum(100)
-        self.layout.addWidget(self.progress_bar)
-
-    def set_progress(self, value):
-        self.progress_bar.setValue(value)
-
-
-class WorkerThread(QThread):
-    '''
-    Класс рабочего потока для прогресс-бара
-    '''
-    progress_changed = pyqtSignal(int)
-    
-    def __init__(self, data, parent=None):
-        super().__init__(parent)
-        self.data = data
-    
-    def run(self):
-        total_steps = len(self.data)
-        for i, item in enumerate(self.data):
-            # Ваш длительный процесс здесь
-            self.do_work(item)
-            progress = int((i + 1) / total_steps * 100)
-            self.progress_changed.emit(progress)
-    
-    def do_work(self, item):
-        # Имитация работы (заменить на реальную функцию)
-        QThread.sleep(1)  # Удалить или заменить на реальный процесс
 
 
 class HomeLayout(QWidget):
@@ -176,21 +175,27 @@ class HomeLayout(QWidget):
 
         # Объявляем макеты
         self.page_layout = QGridLayout(self)
-        self.page_layout.setContentsMargins(40, 0, 40, 40)
+        self.page_layout.setContentsMargins(40, 0, 40, 0)
         self.grid_layout = QGridLayout()
         self.grid_layout.setContentsMargins(40, 0, 40, 0)
+        self.grid_layout2 = QGridLayout()
+        self.grid_layout2.setContentsMargins(0, 0, 0, 0)
 
         image_path_1 = 'images/gazprom_logo.jpg'
         image_path_2 = 'images/fkn_logo.jpg'
+        image_path_3 = 'images/home.jpg'
 
         # Создаем виджеты
         self.label1 = QLabel("Home page")
         self.image_label_1 = QLabel()
         self.image_label_2 = QLabel()
+        self.image_label_3 = QLabel()
         self.pixmap_1 = QPixmap(image_path_1)
         self.image_label_1.setPixmap(self.pixmap_1)
         self.pixmap_2 = QPixmap(image_path_2)
         self.image_label_2.setPixmap(self.pixmap_2)
+        self.pixmap_3 = QPixmap(image_path_3)
+        self.image_label_3.setPixmap(self.pixmap_3)
 
 
         spacer = QSpacerItem(20, 20, QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Expanding)
@@ -204,6 +209,9 @@ class HomeLayout(QWidget):
         # Устанавливаем цвет фона виджета
         self.color_widget_1 = QWidget()
         self.color_widget_1.setStyleSheet("background-color: #ffffff;")
+
+        self.color_widget_2 = QWidget()
+        self.color_widget_2.setStyleSheet("background-color: #000000;")
         
         # Добавляем виджеты в сетку
         # self.page_layout.setSpacing(20)
@@ -213,9 +221,12 @@ class HomeLayout(QWidget):
         self.page_layout.addLayout(self.grid_layout, 1, 0)
         self.grid_layout.addWidget(self.color_widget_1, 0, 0, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout.addWidget(self.image_label_1, 0, 0, alignment=Qt.AlignmentFlag.AlignLeft)
-        self.grid_layout.addWidget(self.image_label_2, 0, 1, alignment=Qt.AlignmentFlag.AlignRight) 
+        self.grid_layout.addWidget(self.image_label_2, 0, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        self.page_layout.addLayout(self.grid_layout2, 2, 0)
+        self.grid_layout2.addWidget(self.color_widget_2, 0, 0, alignment=Qt.AlignmentFlag.AlignTop)
+        self.grid_layout2.addWidget(self.image_label_3, 0, 0, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
 
-        self.page_layout.addItem(spacer, 2, 0)  
+
 
         # Устанавливаем stretch-факторы
         self.grid_layout.setRowStretch(0, 0)
@@ -225,6 +236,7 @@ class HomeLayout(QWidget):
 
         # Создаем вспомогательный виджет для второго фона в QVBoxLayout
         self.page_layout.addWidget(self.color_widget_1, 1, 0)
+        self.page_layout.addWidget(self.color_widget_2, 2, 0)
 
 
 class UploadLayout(QWidget):
@@ -312,7 +324,8 @@ class UploadLayout(QWidget):
         if not selected_items:
             return
         for item in selected_items:
-            files_list.remove(item.text())
+            path = item.text().replace('/', '\\')
+            files_list.remove(path)
             self.file_list_widget.takeItem(self.file_list_widget.row(item))                         
     
 
@@ -526,7 +539,7 @@ class ControlLayout(QWidget):
         self.page_layout.setContentsMargins(40, 40, 40, 40)
         self.grid_layout = QGridLayout()
         self.grid_layout.setContentsMargins(40, 40, 40, 40)
-        self.progress_bar_widget = ProgressBarWidget()
+        # self.progress_bar_widget = ProgressBarWidget()
 
         # Создаем виджеты
         self.label1 = QLabel("Контроль вывода")
@@ -560,7 +573,7 @@ class ControlLayout(QWidget):
         self.grid_layout.addWidget(self.label2, 0, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout.addWidget(self.check_table, 1, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout.addWidget(self.progress_button, 2, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
-        self.grid_layout.addWidget(self.progress_bar_widget, 3, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
+        # self.grid_layout.addWidget(self.progress_bar_widget, 3, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout.addWidget(self.button1, 4, 0, alignment=Qt.AlignmentFlag.AlignTop)
         self.grid_layout.addWidget(self.button2, 4, 1, alignment=Qt.AlignmentFlag.AlignTop)
 
@@ -855,8 +868,34 @@ class ResultLayout(QWidget):
         df.to_excel('output.xlsx', index=False)
 
     
+    #Функция для создания DataFrame
+    def create_dataframe_from_dfs_global(self,dfs_global):
+        print('На обработку подался такой глобальный словарь',dfs_global)
+        data = {}
+        for outer_key, (inner_dict, _) in dfs_global.items():
+            if inner_dict is not None:
+                for inner_key, value_dict in inner_dict.items():
+                    # Предполагается, что в value_dict всего один ключ, поэтому извлекаем первую (и единственную) серию
+                    series = next(iter(value_dict.values()))
+                    combined_key = f"{outer_key}+{inner_key}"
+                    data[combined_key] = series
+        print('Возвращается вот такой df: ',pd.DataFrame(data))
+        return pd.DataFrame(data)
+
     def Get_Excel_parallel(self, df, dict):
-        pass
+        global updated_df
+        print('До обработки был такой словарь ',dict)
+        print('Вычитается такой df: ',updated_df)
+        minus_dict = self.GlobalDFS_Minus_df(dict, updated_df)
+        df = self.create_dataframe_from_dfs_global(minus_dict)
+        self.update_preview_table(df)
+        # Сохранение DataFrame в Excel
+        if os.path.exists('output.xlsx'):
+            os.remove('output.xlsx')
+            print(f"Файл {'output.xlsx'} успешно удален.")
+        else:
+            print(f"Файл {'output.xlsx'} не существует.")
+        df.to_excel('output.xlsx', index=False)
 
 
 class MainWindow(QMainWindow):
@@ -886,7 +925,7 @@ class MainWindow(QMainWindow):
         pixmap = QPixmap(image_path)
         self.image_label.setPixmap(pixmap)
 
-        self.button0 = QPushButton("Home")
+        self.button0 = QPushButton("Главная")
         self.button1 = QPushButton("Загрузка файлов")
         self.button2 = QPushButton("Настройка запроса")
         self.button3 = QPushButton("Контроль вывода")

@@ -20,26 +20,25 @@ def Get_global_dict(request, quantity, path):
     i=0
     # Проход по всем ключам словаря и передача значения s в функцию
     for key in global_dict:
-        i=i+1
         s_value = global_dict[key][1]  # Получение значения s из списка
         s_value_big=global_dict[key][0]
         print('Малый словарь для передачи в multi для значения пользователя '+str(key)+': ',s_value)
-        # #получаем датафрейм из малого словаря для передачи в multi
-        test_texts=Get_DF_from_Dictionary(s_value)
-        print('Dataframe для передачи в multi для значения пользователя '+str(key)+': ',test_texts)
-        #получаем ответ в виле списка заголовков [list]
-        answer= get_words_from_multilingual_e5_base(test_texts,quantity,key,i)
-        #Формируем лист из ответа:    
-        new_list = [item[0] for item in answer]
-        answer=new_list
-        print('Multilingul вернул для значения пользователя '+str(key)+': ',answer)
-        # Удаление значений из малого словаря
         for key1 in s_value:
+            i=i+1
+            # #получаем датафрейм из малого словаря для передачи в multi
+            test_texts=Get_DF_from_Dictionary(s_value,key1)
+            print('Dataframe для передачи в multi для значения пользователя '+str(key)+': ',test_texts)
+            #получаем ответ в виле списка заголовков [list]
+            answer= get_words_from_multilingual_e5_base(test_texts,quantity,key,i)
+            #Формируем лист из ответа:    
+            new_list = [item[0] for item in answer]
+            answer=new_list
+            print('Multilingul вернул для значения пользователя '+str(key)+': ',answer)
+            # Удаление значений из малого словаря
             s_value[key1] = [value for value in s_value[key1] if value in answer]
-        print('Отформотированный малый словарь для значения пользователя '+str(key)+': ',s_value) 
-        # Удаление значений из большого словаря
-        for outer_key in s_value_big:
-            s_value_big[outer_key] = {k: v for k, v in s_value_big[outer_key].items() if k in answer}
+            print('Отформотированный малый словарь для значения пользователя '+str(key)+': ',s_value) 
+            # Удаление значений из большого словаря
+            s_value_big[key1] = {k: v for k, v in s_value_big[key1].items() if k in answer}
         print('Отформатированный большой словарь для значения пользователя'+str(key)+': ',s_value_big)
         global_dict[key]=[copy.deepcopy(s_value_big),copy.deepcopy(s_value)]
     return global_dict
